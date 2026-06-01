@@ -7,6 +7,7 @@ import { Loader2, User, Phone, Mail, CreditCard,
          Package, MapPin, DollarSign, FileText, Weight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { stationMasterApi } from '../../api/endpoints/stationMasterApi';
+import ReceiptModal from '../../components/ui/ReceiptModal';
 
 const nicRegex = /^(\d{9}[VvXx]|\d{12})$/;
 const phoneRegex = /^0[0-9]{9}$/;
@@ -63,6 +64,7 @@ export default function RegisterCargo() {
   const [stations, setStations] = useState([]);
   const [loading,  setLoading]  = useState(false);
   const [estimatedCost, setEstimatedCost] = useState(null);
+  const [receiptTracking, setReceiptTracking] = useState(null);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -103,8 +105,7 @@ export default function RegisterCargo() {
         receiverEmail: data.receiverEmail || undefined,
       });
       const tn = res.data.data.trackingNumber;
-      toast.success(`Cargo registered! Tracking: ${tn}`);
-      navigate('/station-master/cargo');
+      setReceiptTracking(tn);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Registration failed');
     } finally {
@@ -257,6 +258,14 @@ export default function RegisterCargo() {
             : <><Package size={18} />Register Cargo & Generate QR</>}
         </button>
       </form>
+
+      {receiptTracking && (
+        <ReceiptModal 
+          trackingNumber={receiptTracking} 
+          onClose={() => setReceiptTracking(null)} 
+          nextRoute="/station-master/cargo"
+        />
+      )}
     </div>
   );
 }

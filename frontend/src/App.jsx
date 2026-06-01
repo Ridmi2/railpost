@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 
 import HomePage       from './pages/public/HomePage';
+import PublicTrack    from './pages/public/PublicTrack';
 import LoginPage      from './pages/auth/LoginPage';
 import SignupPage     from './pages/auth/SignupPage';
 
@@ -30,6 +31,9 @@ import OfficerLayout        from './components/layout/OfficerLayout';
 import OfficerDashboard     from './pages/officer/OfficerDashboard';
 import ScanCargo            from './pages/officer/ScanCargo';
 
+import ReviewerLayout       from './components/layout/ReviewerLayout';
+import ReviewerDashboard    from './pages/reviewer/ReviewerDashboard';
+
 import PrivateRoute from './routes/PrivateRoute';
 import RoleRoute    from './routes/RoleRoute';
 
@@ -41,6 +45,7 @@ export default function App() {
 
         {/* Public */}
         <Route path="/"       element={<HomePage />} />
+        <Route path="/track/:trackingNumber?" element={<PublicTrack />} />
         <Route path="/login"  element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
         <Route path="/unauthorized" element={
@@ -98,6 +103,15 @@ export default function App() {
             <Route element={<OfficerLayout />}>
               <Route path="/officer/dashboard" element={<OfficerDashboard />} />
               <Route path="/officer/scan"      element={<ScanCargo />} />
+            </Route>
+          </Route>
+        </Route>
+
+        {/* Reviewer */}
+        <Route element={<PrivateRoute />}>
+          <Route element={<RoleRoute allowedRoles={['REVIEWER']} />}>
+            <Route element={<ReviewerLayout />}>
+              <Route path="/reviewer/dashboard" element={<ReviewerDashboard />} />
             </Route>
           </Route>
         </Route>

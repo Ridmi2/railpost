@@ -7,6 +7,7 @@ import { Loader2, Package, User, Phone, Mail, CreditCard,
          MapPin, FileText, DollarSign, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { senderApi } from '../../api/endpoints/senderApi';
+import ReceiptModal from '../../components/ui/ReceiptModal';
 
 const nicRegex = /^(\d{9}[VvXx]|\d{12})$/;
 
@@ -53,6 +54,7 @@ export default function BookCargo() {
   const navigate = useNavigate();
   const [loading,   setLoading]   = useState(false);
   const [stations,  setStations]  = useState([]);
+  const [receiptTracking, setReceiptTracking] = useState(null);
 
   useEffect(() => {
     senderApi.getStations()
@@ -72,8 +74,7 @@ export default function BookCargo() {
         declaredValue: Number(data.declaredValue),
       });
       const tracking = res.data.data.trackingNumber;
-      toast.success(`Booking confirmed! Tracking: ${tracking}`);
-      navigate('/sender/shipments');
+      setReceiptTracking(tracking);
     } catch (err) {
       toast.error(err.response?.data?.message || 'Booking failed. Try again.');
     } finally {
@@ -194,6 +195,14 @@ export default function BookCargo() {
             : <><Package size={18} />Confirm Booking</>}
         </button>
       </form>
+
+      {receiptTracking && (
+        <ReceiptModal 
+          trackingNumber={receiptTracking} 
+          onClose={() => setReceiptTracking(null)} 
+          nextRoute="/sender/shipments"
+        />
+      )}
     </div>
   );
 }
