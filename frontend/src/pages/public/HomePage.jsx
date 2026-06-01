@@ -107,7 +107,10 @@ function Hero() {
 
   const handleTrack = (e) => {
     e.preventDefault();
-    if (tracking.trim()) navigate(`/track/${tracking.trim()}`);
+    if (tracking.trim()) {
+      import('react-hot-toast').then(m => m.default.error('Please login to track your cargo'));
+      navigate('/login');
+    }
   };
 
   return (
@@ -247,7 +250,10 @@ function TrackSection() {
 
   const handleTrack = (e) => {
     e.preventDefault();
-    if (tracking.trim()) navigate(`/track/${tracking.trim()}`);
+    if (tracking.trim()) {
+      import('react-hot-toast').then(m => m.default.error('Please login to track your cargo'));
+      navigate('/login');
+    }
   };
 
   return (

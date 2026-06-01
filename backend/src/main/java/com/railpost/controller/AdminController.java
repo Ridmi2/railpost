@@ -79,4 +79,41 @@ public class AdminController {
                 ApiResponse.success("Station reassigned",
                         adminService.reassignStation(id, stationId)));
     }
+
+    // ── Trains ────────────────────────────────────────────────────────────────
+    @GetMapping("/trains")
+    public ResponseEntity<ApiResponse<List<com.railpost.dto.response.TrainResponse>>> getTrains() {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getAllTrains()));
+    }
+
+    @PostMapping("/trains")
+    public ResponseEntity<ApiResponse<com.railpost.dto.response.TrainResponse>> createTrain(
+            @Valid @RequestBody com.railpost.dto.request.CreateTrainRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.success("Train created", adminService.createTrain(request)));
+    }
+
+    @PatchMapping("/trains/{id}/toggle")
+    public ResponseEntity<ApiResponse<com.railpost.dto.response.TrainResponse>> toggleTrain(@PathVariable String id) {
+        return ResponseEntity.ok(
+                ApiResponse.success("Status updated", adminService.toggleTrainStatus(id)));
+    }
+
+    // ── Cost Config ───────────────────────────────────────────────────────────
+    @GetMapping("/cost-config")
+    public ResponseEntity<ApiResponse<com.railpost.dto.response.CostConfigResponse>> getCostConfig() {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getCostConfig()));
+    }
+
+    @PutMapping("/cost-config")
+    public ResponseEntity<ApiResponse<com.railpost.dto.response.CostConfigResponse>> updateCostConfig(
+            @Valid @RequestBody com.railpost.dto.request.CostConfigRequest request) {
+        return ResponseEntity.ok(ApiResponse.success("Cost config updated", adminService.updateCostConfig(request)));
+    }
+
+    // ── Reports ───────────────────────────────────────────────────────────────
+    @GetMapping("/reports/summary")
+    public ResponseEntity<ApiResponse<com.railpost.dto.response.ReportSummaryResponse>> getReportsSummary() {
+        return ResponseEntity.ok(ApiResponse.success(adminService.getReportsSummary()));
+    }
 }

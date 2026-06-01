@@ -10,7 +10,7 @@ import lombok.Setter;
 public class LoginRequest {
 
     @NotBlank(message = "Email is required")
-    @ValidGmailEmail
+    @jakarta.validation.constraints.Email(message = "Invalid email format")
     private String email;
 
     @NotBlank(message = "Password is required")

@@ -14,4 +14,16 @@ export const adminApi = {
   createStationMaster:   (data)          => api.post('/admin/station-masters', data),
   toggleStationMaster:   (id)            => api.patch(`/admin/station-masters/${id}/toggle`),
   reassignStation:       (id, stationId) => api.patch(`/admin/station-masters/${id}/reassign?stationId=${stationId}`),
+
+  // Trains
+  getTrains:             ()              => api.get('/admin/trains'),
+  createTrain:           (data)          => api.post('/admin/trains', data),
+  toggleTrain:           (id)            => api.patch(`/admin/trains/${id}/toggle`),
+
+  // Cost Config
+  getCostConfig:         ()              => api.get('/admin/cost-config'),
+  updateCostConfig:      (data)          => api.put('/admin/cost-config', data),
+
+  // Reports
+  getReportsSummary:     ()              => api.get('/admin/reports/summary'),
 };

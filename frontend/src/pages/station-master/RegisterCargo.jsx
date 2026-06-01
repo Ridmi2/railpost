@@ -62,9 +62,6 @@ export default function RegisterCargo() {
   const navigate = useNavigate();
   const [stations, setStations] = useState([]);
   const [loading,  setLoading]  = useState(false);
-  const [weight,   setWeight]   = useState('');
-  const [declared, setDeclared] = useState('');
-  const [trainType, setTrainType] = useState('');
   const [estimatedCost, setEstimatedCost] = useState(null);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
@@ -77,19 +74,23 @@ export default function RegisterCargo() {
       .catch(() => toast.error('Failed to load stations'));
   }, []);
 
+  const weightVal = watch('weight');
+  const declaredVal = watch('declaredValue');
+  const trainTypeVal = watch('trainType');
+
   // Live cost estimate
   useEffect(() => {
-    const w = parseFloat(weight);
-    const d = parseFloat(declared);
-    if (!isNaN(w) && !isNaN(d) && w > 0 && d > 0 && trainType) {
-      const rate = trainType === 'EXPRESS' ? 15.0 : 8.0;
+    const w = parseFloat(weightVal);
+    const d = parseFloat(declaredVal);
+    if (!isNaN(w) && !isNaN(d) && w > 0 && d > 0 && trainTypeVal) {
+      const rate = trainTypeVal === 'EXPRESS' ? 15.0 : 8.0;
       const transport = Math.round(w * rate * 10) / 10;
       const insurance = Math.round(d * 0.02 * 100) / 100;
       setEstimatedCost({ transport, insurance, total: Math.round((transport + insurance) * 100) / 100 });
     } else {
       setEstimatedCost(null);
     }
-  }, [weight, declared, trainType]);
+  }, [weightVal, declaredVal, trainTypeVal]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -193,7 +194,6 @@ export default function RegisterCargo() {
             </Field>
             <Field label="Train Type" error={errors.trainType?.message} icon={Package}>
               <select {...register('trainType')}
-                      onChange={e => setTrainType(e.target.value)}
                       className={`${iCls()} bg-white`}>
                 <option value="">Select train type...</option>
                 <option value="EXPRESS">Express Train (LKR 15/kg)</option>
@@ -204,14 +204,12 @@ export default function RegisterCargo() {
                    hint="Actual weight from station scale">
               <input {...register('weight')} type="number" step="0.1" min="0.1"
                      placeholder="e.g. 5.5"
-                     onChange={e => setWeight(e.target.value)}
                      className={iCls()} />
             </Field>
             <Field label="Declared Value (LKR)" error={errors.declaredValue?.message}
                    icon={DollarSign} hint="For insurance calculation (2%)">
               <input {...register('declaredValue')} type="number" min="1"
                      placeholder="e.g. 5000"
-                     onChange={e => setDeclared(e.target.value)}
                      className={iCls()} />
             </Field>
             <div className="sm:col-span-2">
