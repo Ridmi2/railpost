@@ -179,6 +179,8 @@ public class AdminServiceImpl implements AdminService {
                 .stationName(station != null ? station.getName() : "Unassigned")
                 .status(u.getStatus())
                 .createdAt(u.getCreatedAt())
+                .build();
+    }
     // ── Trains ────────────────────────────────────────────────────────────────
     @Override
     public com.railpost.dto.response.TrainResponse createTrain(com.railpost.dto.request.CreateTrainRequest request) {
@@ -252,8 +254,8 @@ public class AdminServiceImpl implements AdminService {
         List<com.railpost.model.document.Cargo> allCargo = cargoRepository.findAll();
         
         long totalShipments = allCargo.size();
-        double totalRevenue = allCargo.stream().mapToDouble(com.railpost.model.document.Cargo::getCost).sum();
-        double totalWeight = allCargo.stream().mapToDouble(com.railpost.model.document.Cargo::getWeight).sum();
+        double totalRevenue = allCargo.stream().mapToDouble(c -> c.getTotalCost() != null ? c.getTotalCost() : 0.0).sum();
+        double totalWeight = allCargo.stream().mapToDouble(c -> c.getWeight() != null ? c.getWeight() : 0.0).sum();
         
         java.util.Map<String, Long> statusDistribution = allCargo.stream()
                 .collect(java.util.stream.Collectors.groupingBy(c -> c.getStatus().name(), java.util.stream.Collectors.counting()));
@@ -272,11 +274,11 @@ public class AdminServiceImpl implements AdminService {
                             .stationCode(station != null ? station.getCode() : "Unknown")
                             .stationName(station != null ? station.getName() : "Unknown")
                             .shipmentsCount(cargos.size())
-                            .revenue(cargos.stream().mapToDouble(com.railpost.model.document.Cargo::getCost).sum())
-                            .weight(cargos.stream().mapToDouble(com.railpost.model.document.Cargo::getWeight).sum())
+                            .revenue(cargos.stream().mapToDouble(c -> c.getTotalCost() != null ? c.getTotalCost() : 0.0).sum())
+                            .weight(cargos.stream().mapToDouble(c -> c.getWeight() != null ? c.getWeight() : 0.0).sum())
                             .build();
                 })
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
                 
         return com.railpost.dto.response.ReportSummaryResponse.builder()
                 .totalShipments(totalShipments)
