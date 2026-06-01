@@ -104,6 +104,12 @@ public class Cargo {
     private LocalDateTime expiresAt;
 
     // ── Delivery ──────────────────────────────────────────────────────────
+    @Field("delivery_otp")
+    private String deliveryOtp;
+
+    @Field("otp_expires_at")
+    private LocalDateTime otpExpiresAt;
+
     @Field("delivered_at")
     private LocalDateTime deliveredAt;
 

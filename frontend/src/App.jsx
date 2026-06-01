@@ -26,6 +26,10 @@ import StationCargo           from './pages/station-master/StationCargo';
 import ManageOfficers         from './pages/station-master/ManageOfficers';
 import StationReports         from './pages/station-master/StationReports';
 
+import OfficerLayout        from './components/layout/OfficerLayout';
+import OfficerDashboard     from './pages/officer/OfficerDashboard';
+import ScanCargo            from './pages/officer/ScanCargo';
+
 import PrivateRoute from './routes/PrivateRoute';
 import RoleRoute    from './routes/RoleRoute';
 
@@ -84,6 +88,16 @@ export default function App() {
               <Route path="/station-master/register"  element={<RegisterCargo />} />
               <Route path="/station-master/officers"  element={<ManageOfficers />} />
               <Route path="/station-master/reports"   element={<StationReports />} />
+            </Route>
+          </Route>
+        </Route>
+
+        {/* Station Officer */}
+        <Route element={<PrivateRoute />}>
+          <Route element={<RoleRoute allowedRoles={['STATION_OFFICER']} />}>
+            <Route element={<OfficerLayout />}>
+              <Route path="/officer/dashboard" element={<OfficerDashboard />} />
+              <Route path="/officer/scan"      element={<ScanCargo />} />
             </Route>
           </Route>
         </Route>
