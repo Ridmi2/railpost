@@ -1,0 +1,19 @@
+spring:
+  application:
+    name: railpost-backend
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/railpost_dev
+
+server:
+  port: 8081
+
+app:
+  jwt:
+    secret: railpost-super-secret-key-that-is-at-least-64-characters-long-for-hs512-algorithm
+    expiry-ms: 86400000
+
+logging:
+  level:
+    com.railpost: DEBUG
+    org.springframework.security: INFO
