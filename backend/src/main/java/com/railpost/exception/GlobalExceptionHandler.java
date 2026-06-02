@@ -31,10 +31,16 @@ public class GlobalExceptionHandler {
             String field = ((FieldError) err).getField();
             errors.put(field, err.getDefaultMessage());
         });
+        
+        String errorMessage = "Validation failed";
+        if (!errors.isEmpty()) {
+            errorMessage = errors.values().iterator().next();
+        }
+
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.<Map<String, String>>builder()
                         .success(false)
-                        .message("Validation failed")
+                        .message(errorMessage)
                         .data(errors)
                         .build());
     }

@@ -41,8 +41,6 @@ public class ValidationUtil {
     /**
      * Sri Lankan phone number validation
      * Format: +94 followed by 9 digits (10 digits total without +94)
-     * Valid prefixes: 077, 072, 070, 078, 076
-     * Examples: +94771234567, +94721234567, +94701234567, +94781234567, +94761234567
      */
     public static boolean isValidSriLankanPhoneNumber(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isBlank()) {
@@ -51,15 +49,13 @@ public class ValidationUtil {
 
         String cleanedPhone = phoneNumber.replaceAll("\\s+", ""); // Remove spaces
 
-        // Pattern for +94 followed by valid operator codes (077, 072, 070, 078, 076) and 7 more digits
-        String sriLankanPhonePattern = "^\\+94(77|72|70|78|76)\\d{7}$";
+        String sriLankanPhonePattern = "^\\+94(77|72|70|78|76|63|25|36|55|57|65|32|11|91|33|47|51|21|67|34|81|35|37|23|66|41|54|31|52|38|27|45|26|24)\\d{7}$";
 
         return Pattern.compile(sriLankanPhonePattern).matcher(cleanedPhone).matches();
     }
 
     /**
      * Validates phone number without country code (10 digits with valid prefix)
-     * Valid prefixes: 077, 072, 070, 078, 076
      */
     public static boolean isValidSriLankanPhoneNumberWithoutCountryCode(String phoneNumber) {
         if (phoneNumber == null || phoneNumber.isBlank()) {
@@ -68,8 +64,7 @@ public class ValidationUtil {
 
         String cleanedPhone = phoneNumber.replaceAll("\\s+", ""); // Remove spaces
 
-        // Pattern for 077, 072, 070, 078, 076 followed by 7 more digits
-        String sriLankanPhonePattern = "^(077|072|070|078|076)\\d{7}$";
+        String sriLankanPhonePattern = "^0(77|72|70|78|76|63|25|36|55|57|65|32|11|91|33|47|51|21|67|34|81|35|37|23|66|41|54|31|52|38|27|45|26|24)\\d{7}$";
 
         return Pattern.compile(sriLankanPhonePattern).matcher(cleanedPhone).matches();
     }
