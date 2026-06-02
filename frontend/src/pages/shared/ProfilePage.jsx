@@ -17,7 +17,11 @@ const passwordSchema = z.object({
   newPassword: z.string()
     .min(8, 'Password must be at least 8 characters')
     .regex(/[A-Z]/, 'Must contain at least one uppercase letter')
-    .regex(/[0-9]/, 'Must contain at least one number')
+    .regex(/[0-9]/, 'Must contain at least one number'),
+  confirmNewPassword: z.string()
+}).refine((data) => data.newPassword === data.confirmNewPassword, {
+  message: "Passwords don't match",
+  path: ["confirmNewPassword"]
 });
 
 function Field({ label, error, icon: Icon, children, disabled = false }) {
@@ -165,6 +169,10 @@ export default function ProfilePage() {
 
             <Field label="New Password" error={errPass.newPassword?.message} icon={Lock}>
               <input type="password" {...regPass('newPassword')} className={inputClass()} placeholder="Min 8 chars, 1 uppercase, 1 number" />
+            </Field>
+
+            <Field label="Confirm New Password" error={errPass.confirmNewPassword?.message} icon={Lock}>
+              <input type="password" {...regPass('confirmNewPassword')} className={inputClass()} placeholder="Confirm your new password" />
             </Field>
 
             <button

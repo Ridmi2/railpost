@@ -3,8 +3,10 @@ import { Toaster } from 'react-hot-toast';
 
 import HomePage       from './pages/public/HomePage';
 import PublicTrack    from './pages/public/PublicTrack';
-import LoginPage      from './pages/auth/LoginPage';
-import SignupPage     from './pages/auth/SignupPage';
+import LoginPage          from './pages/auth/LoginPage';
+import SignupPage         from './pages/auth/SignupPage';
+import ForgotPasswordPage from './pages/auth/ForgotPasswordPage';
+import ResetPasswordPage  from './pages/auth/ResetPasswordPage';
 
 import AdminLayout    from './components/layout/AdminLayout';
 import AdminDashboard from './pages/admin/AdminDashboard';
@@ -50,6 +52,8 @@ export default function App() {
         <Route path="/track/:trackingNumber?" element={<PublicTrack />} />
         <Route path="/login"  element={<LoginPage />} />
         <Route path="/signup" element={<SignupPage />} />
+        <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        <Route path="/reset-password/:token" element={<ResetPasswordPage />} />
         <Route path="/unauthorized" element={
           <div className="min-h-screen flex items-center justify-center bg-gray-50">
             <div className="text-center">

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -127,9 +127,9 @@ export default function LoginPage() {
                 <input type="checkbox" className="rounded border-gray-300 text-blue-600" />
                 Remember me
               </label>
-              <button type="button" className="text-sm text-blue-600 hover:underline font-medium">
+              <Link to="/forgot-password" className="text-sm text-blue-600 hover:underline font-medium">
                 Forgot password?
-              </button>
+              </Link>
             </div>
 
             {/* Submit */}

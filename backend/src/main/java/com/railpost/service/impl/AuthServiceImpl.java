@@ -11,7 +11,16 @@ import com.railpost.model.enums.UserStatus;
 import com.railpost.repository.UserRepository;
 import com.railpost.security.JwtTokenProvider;
 import com.railpost.service.AuthService;
+import com.railpost.dto.request.ForgotPasswordRequest;
+import com.railpost.dto.request.ResetPasswordRequest;
+import com.railpost.exception.ResourceNotFoundException;
+import com.railpost.exception.BadRequestException;
+import com.railpost.model.document.PasswordResetToken;
+import com.railpost.repository.PasswordResetTokenRepository;
+import com.railpost.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import java.time.LocalDateTime;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -24,6 +33,8 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final PasswordResetTokenRepository tokenRepository;
+    private final EmailService emailService;
 
     @Override
     public LoginResponse login(LoginRequest request) {
@@ -66,5 +77,49 @@ public class AuthServiceImpl implements AuthService {
 
         userRepository.save(user);
         log.info("New sender registered: {}", request.getEmail());
+    }
+
+    @Override
+    public void forgotPassword(ForgotPasswordRequest request) {
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with email: " + request.getEmail()));
+
+        // Delete any existing tokens for this user
+        tokenRepository.deleteByUserId(user.getId());
+
+        // Generate a new token
+        String token = UUID.randomUUID().toString();
+        PasswordResetToken resetToken = PasswordResetToken.builder()
+                .userId(user.getId())
+                .token(token)
+                .expiryDate(LocalDateTime.now().plusMinutes(15))
+                .build();
+        tokenRepository.save(resetToken);
+
+        // Send email
+        String resetLink = "http://localhost:5173/reset-password/" + token;
+        emailService.sendPasswordResetEmail(user.getEmail(), resetLink);
+        log.info("Password reset token generated for user: {}", user.getEmail());
+    }
+
+    @Override
+    public void resetPassword(ResetPasswordRequest request) {
+        PasswordResetToken resetToken = tokenRepository.findByToken(request.getToken())
+                .orElseThrow(() -> new BadRequestException("Invalid password reset token"));
+
+        if (resetToken.getExpiryDate().isBefore(LocalDateTime.now())) {
+            tokenRepository.delete(resetToken);
+            throw new BadRequestException("Password reset token has expired");
+        }
+
+        User user = userRepository.findById(resetToken.getUserId())
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
+        userRepository.save(user);
+
+        // Delete the token so it cannot be used again
+        tokenRepository.delete(resetToken);
+        log.info("Password successfully reset for user: {}", user.getEmail());
     }
 }
