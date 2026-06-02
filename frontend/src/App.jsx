@@ -34,6 +34,8 @@ import ScanCargo            from './pages/officer/ScanCargo';
 import ReviewerLayout       from './components/layout/ReviewerLayout';
 import ReviewerDashboard    from './pages/reviewer/ReviewerDashboard';
 
+import ProfilePage          from './pages/shared/ProfilePage';
+
 import PrivateRoute from './routes/PrivateRoute';
 import RoleRoute    from './routes/RoleRoute';
 
@@ -68,6 +70,7 @@ export default function App() {
               <Route path="/admin/trains"    element={<Trains />} />
               <Route path="/admin/costs"     element={<Costs />} />
               <Route path="/admin/reports"   element={<Reports />} />
+              <Route path="/admin/profile"   element={<ProfilePage />} />
             </Route>
           </Route>
         </Route>
@@ -80,6 +83,7 @@ export default function App() {
               <Route path="/sender/book"      element={<BookCargo />} />
               <Route path="/sender/shipments" element={<MyShipments />} />
               <Route path="/sender/track"     element={<TrackCargo />} />
+              <Route path="/sender/profile"   element={<ProfilePage />} />
             </Route>
           </Route>
         </Route>
@@ -93,6 +97,7 @@ export default function App() {
               <Route path="/station-master/register"  element={<RegisterCargo />} />
               <Route path="/station-master/officers"  element={<ManageOfficers />} />
               <Route path="/station-master/reports"   element={<StationReports />} />
+              <Route path="/station-master/profile"   element={<ProfilePage />} />
             </Route>
           </Route>
         </Route>
@@ -103,6 +108,7 @@ export default function App() {
             <Route element={<OfficerLayout />}>
               <Route path="/officer/dashboard" element={<OfficerDashboard />} />
               <Route path="/officer/scan"      element={<ScanCargo />} />
+              <Route path="/officer/profile"   element={<ProfilePage />} />
             </Route>
           </Route>
         </Route>
@@ -112,6 +118,7 @@ export default function App() {
           <Route element={<RoleRoute allowedRoles={['REVIEWER']} />}>
             <Route element={<ReviewerLayout />}>
               <Route path="/reviewer/dashboard" element={<ReviewerDashboard />} />
+              <Route path="/reviewer/profile"   element={<ProfilePage />} />
             </Route>
           </Route>
         </Route>

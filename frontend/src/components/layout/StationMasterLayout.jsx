@@ -1,4 +1,4 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
 import {
   LayoutDashboard, Package, PlusCircle,
   Users, BarChart3, LogOut, Train, Bell, User
@@ -12,6 +12,7 @@ const NAV = [
   { to: '/station-master/register',  icon: PlusCircle,      label: 'Register Cargo'     },
   { to: '/station-master/officers',  icon: Users,           label: 'Manage Officers'    },
   { to: '/station-master/reports',   icon: BarChart3,       label: 'Station Reports'    },
+  { to: '/station-master/profile',   icon: User,            label: 'My Profile'         },
 ];
 
 export default function StationMasterLayout() {
@@ -76,15 +77,15 @@ export default function StationMasterLayout() {
             <button className="text-gray-400 hover:text-gray-600">
               <Bell size={20} />
             </button>
-            <div className="flex items-center gap-2.5">
+            <Link to="/station-master/profile" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer">
               <div className="w-8 h-8 bg-violet-500 rounded-full flex items-center justify-center">
                 <User size={15} className="text-white" />
               </div>
-              <div className="hidden sm:block">
+              <div className="hidden sm:block text-left">
                 <p className="text-sm font-medium text-gray-800 leading-none">{user?.fullName}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{user?.email}</p>
               </div>
-            </div>
+            </Link>
           </div>
         </header>
         <main className="flex-1 p-6 overflow-auto">

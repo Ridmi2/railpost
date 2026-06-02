@@ -1,4 +1,4 @@
-import { Outlet } from 'react-router-dom';
+import { Outlet, Link } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import useAuthStore from '../../store/authStore';
 import { Bell, User } from 'lucide-react';
@@ -31,17 +31,17 @@ export default function AdminLayout() {
                 3
               </span>
             </button>
-            <div className="flex items-center gap-2.5">
+            <Link to="/admin/profile" className="flex items-center gap-2.5 hover:opacity-80 transition-opacity cursor-pointer">
               <div className="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center">
                 <User size={15} className="text-white" />
               </div>
-              <div className="hidden sm:block">
+              <div className="hidden sm:block text-left">
                 <p className="text-sm font-medium text-gray-800 leading-none">
                   {user?.fullName}
                 </p>
                 <p className="text-xs text-gray-400 mt-0.5">{user?.email}</p>
               </div>
-            </div>
+            </Link>
           </div>
         </header>
 

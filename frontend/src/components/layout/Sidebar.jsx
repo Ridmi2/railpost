@@ -1,7 +1,7 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Users, Train,
-  DollarSign, BarChart3, LogOut, Train as TrainIcon
+  DollarSign, BarChart3, LogOut, Train as TrainIcon, User
 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
@@ -13,6 +13,7 @@ const NAV_ITEMS = [
   { to: '/admin/trains',     icon: Train,            label: 'Trains & Schedules'},
   { to: '/admin/costs',      icon: DollarSign,       label: 'Cost Config'      },
   { to: '/admin/reports',    icon: BarChart3,        label: 'System Reports'   },
+  { to: '/admin/profile',    icon: User,             label: 'My Profile'       },
 ];
 
 export default function Sidebar() {

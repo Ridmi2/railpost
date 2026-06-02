@@ -1,5 +1,5 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { Search, LogOut, Eye } from 'lucide-react';
+import { Outlet, NavLink, useNavigate, Link } from 'react-router-dom';
+import { Search, LogOut, Eye, User } from 'lucide-react';
 import useAuthStore from '../../store/authStore';
 import toast from 'react-hot-toast';
 
@@ -42,10 +42,14 @@ export default function ReviewerLayout() {
             <Search size={20} />
             Track Shared Cargo
           </NavLink>
+          <NavLink to="/reviewer/profile" className={navClass}>
+            <User size={20} />
+            My Profile
+          </NavLink>
         </div>
 
         <div className="p-4 border-t border-gray-100">
-          <div className="flex items-center gap-3 px-4 py-3 mb-2">
+          <Link to="/reviewer/profile" className="flex items-center gap-3 px-4 py-3 mb-2 hover:bg-gray-50 rounded-xl transition-colors cursor-pointer">
             <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
               {user?.fullName?.charAt(0) || 'R'}
             </div>
@@ -53,7 +57,7 @@ export default function ReviewerLayout() {
               <p className="text-sm font-semibold text-gray-800 truncate">{user?.fullName}</p>
               <p className="text-xs text-gray-500 truncate">Auditor / Reviewer</p>
             </div>
-          </div>
+          </Link>
           <button 
             onClick={handleLogout}
             className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-red-600 hover:bg-red-50 rounded-xl transition-colors font-medium"
