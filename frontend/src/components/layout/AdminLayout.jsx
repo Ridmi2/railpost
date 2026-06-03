@@ -7,17 +7,17 @@ export default function AdminLayout() {
   const { user } = useAuthStore();
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
 
       {/* Sidebar */}
       <Sidebar />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
 
         {/* Top navbar */}
         <header className="bg-white border-b border-gray-200 px-6 py-3.5
-                           flex items-center justify-between sticky top-0 z-10">
+                           flex items-center justify-between shrink-0">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
               Admin Portal
@@ -46,7 +46,7 @@ export default function AdminLayout() {
         </header>
 
         {/* Page content */}
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-6 overflow-y-auto">
           <Outlet />
         </main>
       </div>

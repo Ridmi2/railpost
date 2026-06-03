@@ -289,7 +289,7 @@ export default function Masters() {
             </div>
 
             {/* Form */}
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4" autoComplete="off">
 
               <Field label="Full Name" error={errors.fullName?.message} icon={UserCheck}>
                 <input {...register('fullName')} placeholder="Full name"
@@ -298,6 +298,7 @@ export default function Masters() {
 
               <Field label="Email Address" error={errors.email?.message} icon={Mail}>
                 <input {...register('email')} type="email" placeholder="Email address"
+                       autoComplete="new-password"
                        className={inputCls()} />
               </Field>
 
@@ -330,6 +331,7 @@ export default function Masters() {
                 <input {...register('password')}
                        type={showPass ? 'text' : 'password'}
                        placeholder="Set a password"
+                       autoComplete="new-password"
                        className={`${inputCls()} pr-10`} />
                 <button type="button" onClick={() => setShowPass(!showPass)}
                   className="absolute right-3 top-1/2 -translate-y-1/2

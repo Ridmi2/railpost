@@ -260,14 +260,14 @@ export default function ManageOfficers() {
               </button>
             </div>
 
-            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4">
+            <form onSubmit={handleSubmit(onSubmit)} className="p-6 space-y-4" autoComplete="off">
               <Field label="Full Name" error={errors.fullName?.message} icon={Users}>
                 <input {...register('fullName')} placeholder="Officer full name"
                        className={iCls()} />
               </Field>
               <Field label="Email" error={errors.email?.message} icon={Mail}>
                 <input {...register('email')} type="email"
-                       placeholder="officer@gmail.com" className={iCls()} />
+                       placeholder="officer@gmail.com" autoComplete="new-password" className={iCls()} />
               </Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="Phone" error={errors.phone?.message} icon={Phone}>
@@ -284,6 +284,7 @@ export default function ManageOfficers() {
                 <input {...register('password')}
                        type={showPass ? 'text' : 'password'}
                        placeholder="Set password"
+                       autoComplete="new-password"
                        className={`${iCls()} pr-10`} />
                 <button type="button" onClick={() => setShowPass(!showPass)}
                   className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">

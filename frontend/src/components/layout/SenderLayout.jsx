@@ -25,10 +25,9 @@ export default function SenderLayout() {
   };
 
   return (
-    <div className="flex min-h-screen bg-gray-50">
-
+    <div className="flex h-screen bg-gray-50 overflow-hidden">
       {/* Sidebar */}
-      <aside className="w-64 min-h-screen bg-[#1e3a6e] flex flex-col">
+      <aside className="w-64 h-screen bg-[#1e3a6e] flex flex-col shrink-0">
         <div className="flex items-center gap-3 px-6 py-5 border-b border-blue-800">
           <div className="w-9 h-9 bg-blue-500 rounded-lg flex items-center justify-center">
             <Train size={20} className="text-white" />
@@ -57,7 +56,7 @@ export default function SenderLayout() {
           ))}
         </nav>
 
-        <div className="px-3 py-4 border-t border-blue-800">
+        <div className="px-3 py-4 border-t border-blue-800 shrink-0">
           <button onClick={logout}
             className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm
                        font-medium text-blue-200 hover:bg-red-600 hover:text-white
@@ -68,9 +67,9 @@ export default function SenderLayout() {
       </aside>
 
       {/* Main */}
-      <div className="flex-1 flex flex-col">
+      <div className="flex-1 flex flex-col h-screen overflow-hidden relative">
         <header className="bg-white border-b border-gray-200 px-6 py-3.5
-                           flex items-center justify-between sticky top-0 z-10">
+                           flex items-center justify-between shrink-0">
           <p className="text-xs text-gray-400 uppercase tracking-wide font-medium">
             Sender Portal
           </p>
@@ -89,7 +88,7 @@ export default function SenderLayout() {
             </Link>
           </div>
         </header>
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-6 overflow-y-auto">
           <Outlet />
         </main>
       </div>

@@ -115,7 +115,7 @@ export default function SignupPage() {
             </p>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" autoComplete="off">
 
             {/* Full Name */}
             <Field label="Full Name" error={errors.fullName?.message} icon={User}>
@@ -132,6 +132,7 @@ export default function SignupPage() {
                 {...register('email')}
                 type="email"
                 placeholder="Enter your email"
+                autoComplete="new-password"
                 className={inputClass()}
               />
             </Field>
@@ -164,6 +165,7 @@ export default function SignupPage() {
                 {...register('password')}
                 type={showPass ? 'text' : 'password'}
                 placeholder="Min 8 chars, 1 uppercase, 1 number"
+                autoComplete="new-password"
                 className={`${inputClass()} pr-10`}
               />
               <button
@@ -181,6 +183,7 @@ export default function SignupPage() {
                 {...register('confirmPassword')}
                 type={showConfirm ? 'text' : 'password'}
                 placeholder="Re-enter your password"
+                autoComplete="new-password"
                 className={`${inputClass()} pr-10`}
               />
               <button
