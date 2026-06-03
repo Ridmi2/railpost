@@ -33,9 +33,6 @@ import OfficerLayout        from './components/layout/OfficerLayout';
 import OfficerDashboard     from './pages/officer/OfficerDashboard';
 import ScanCargo            from './pages/officer/ScanCargo';
 
-import ReviewerLayout       from './components/layout/ReviewerLayout';
-import ReviewerDashboard    from './pages/reviewer/ReviewerDashboard';
-
 import ProfilePage          from './pages/shared/ProfilePage';
 
 import PrivateRoute from './routes/PrivateRoute';
@@ -117,15 +114,7 @@ export default function App() {
           </Route>
         </Route>
 
-        {/* Reviewer */}
-        <Route element={<PrivateRoute />}>
-          <Route element={<RoleRoute allowedRoles={['REVIEWER']} />}>
-            <Route element={<ReviewerLayout />}>
-              <Route path="/reviewer/dashboard" element={<ReviewerDashboard />} />
-              <Route path="/reviewer/profile"   element={<ProfilePage />} />
-            </Route>
-          </Route>
-        </Route>
+        {/* Reviewer roles simply use public tracking now, so no special dashboard */}
 
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>

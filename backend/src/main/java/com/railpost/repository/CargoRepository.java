@@ -13,6 +13,7 @@ import java.util.Optional;
 public interface CargoRepository extends MongoRepository<Cargo, String> {
     Optional<Cargo> findByTrackingNumber(String trackingNumber);
     List<Cargo> findBySenderIdOrderByCreatedAtDesc(String senderId);
+    List<Cargo> findByReceiverEmailOrderByCreatedAtDesc(String receiverEmail);
     List<Cargo> findByOriginStationIdOrderByCreatedAtDesc(String stationId);
     List<Cargo> findByStatus(CargoStatus status);
     List<Cargo> findByStatusAndExpiresAtBefore(CargoStatus status, LocalDateTime dateTime);

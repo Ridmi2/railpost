@@ -25,6 +25,11 @@ public class StationOfficerServiceImpl implements StationOfficerService {
 
     private final CargoRepository cargoRepository;
     private final UserRepository userRepository;
+    private final com.railpost.repository.TrainRepository trainRepository;
+    private final com.railpost.repository.StationRepository stationRepository;
+    private final com.railpost.repository.TrackingLogRepository trackingLogRepository;
+    private final com.railpost.service.EmailService emailService;
+    private final com.railpost.service.SmsService smsService;
 
     private User getOfficer(String username) {
         return userRepository.findByEmail(username)
@@ -53,15 +58,37 @@ public class StationOfficerServiceImpl implements StationOfficerService {
         }
 
         cargo.setStatus(request.getStatus());
+        String location = request.getLocation();
+
+        if (request.getStatus() == CargoStatus.ARRIVED) {
+            emailService.sendArrivalEmail(cargo.getReceiverEmail(), cargo.getTrackingNumber(), cargo.getDestinationStationName());
+            smsService.sendArrivalSms(cargo.getReceiverPhone(), cargo.getTrackingNumber(), cargo.getDestinationStationName());
+        }
 
         Cargo.StatusUpdate statusUpdate = Cargo.StatusUpdate.builder()
                 .status(request.getStatus())
-                .location(request.getLocation())
+                .location(location)
                 .note(request.getNote() != null ? request.getNote() : "Updated by " + officer.getFullName())
                 .timestamp(LocalDateTime.now())
                 .build();
 
         cargo.getStatusHistory().add(statusUpdate);
+
+        // Tracking log entry
+        com.railpost.model.document.TrackingLog tLog = com.railpost.model.document.TrackingLog.builder()
+                .cargoId(cargo.getId())
+                .stationId(officer.getStationId())
+                .stationName(location)
+                .scannedByUserId(officer.getId())
+                .scannedByUserName(officer.getFullName())
+                .action(request.getStatus() == CargoStatus.IN_TRANSIT_HUB_SORTING ? 
+                        com.railpost.model.enums.TrackingAction.UNLOADED_FOR_TRANSFER :
+                        (request.getStatus() == CargoStatus.ARRIVED ? 
+                        com.railpost.model.enums.TrackingAction.ARRIVED_AT_DESTINATION :
+                        com.railpost.model.enums.TrackingAction.SCANNED_IN_TRANSIT))
+                .note(request.getNote())
+                .build();
+        trackingLogRepository.save(tLog);
 
         Cargo savedCargo = cargoRepository.save(cargo);
         return mapToResponse(savedCargo);
@@ -133,6 +160,73 @@ public class StationOfficerServiceImpl implements StationOfficerService {
 
         Cargo savedCargo = cargoRepository.save(cargo);
         return mapToResponse(savedCargo);
+    }
+
+    @Override
+    @Transactional
+    public java.util.List<CargoResponse> dispatchCargo(com.railpost.dto.request.DispatchCargoRequest request, String officerUsername) {
+        User officer = getOfficer(officerUsername);
+        com.railpost.model.document.Train train = trainRepository.findById(request.getTrainId())
+                .orElseThrow(() -> new ResourceNotFoundException("Train not found"));
+        com.railpost.model.document.Station currentStation = stationRepository.findById(officer.getStationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Station not found"));
+
+        java.util.List<CargoResponse> responses = new java.util.ArrayList<>();
+        for (String trackingNum : request.getCargoTrackingNumbers()) {
+            Cargo cargo = getCargo(trackingNum);
+            cargo.setStatus(CargoStatus.DISPATCHED);
+            cargo.setCurrentTrainId(train.getId());
+            cargo.setTrainNumber(train.getTrainNo());
+            
+            cargo.getStatusHistory().add(Cargo.StatusUpdate.builder()
+                    .status(CargoStatus.DISPATCHED)
+                    .location(currentStation.getName())
+                    .note("Dispatched on Train: " + train.getTrainNo())
+                    .timestamp(LocalDateTime.now())
+                    .build());
+            
+            trackingLogRepository.save(com.railpost.model.document.TrackingLog.builder()
+                    .cargoId(cargo.getId())
+                    .stationId(currentStation.getId())
+                    .stationName(currentStation.getName())
+                    .trainId(train.getId())
+                    .trainNumber(train.getTrainNo())
+                    .scannedByUserId(officer.getId())
+                    .scannedByUserName(officer.getFullName())
+                    .action(com.railpost.model.enums.TrackingAction.DISPATCHED)
+                    .build());
+                    
+            // For first dispatch, send QR Code
+            if (cargo.getOriginStationId() != null && cargo.getOriginStationId().equals(currentStation.getId())) {
+                emailService.sendQrCodeEmail(cargo.getReceiverEmail(), cargo.getTrackingNumber(), cargo.getQrCode() != null ? cargo.getQrCode() : "QR_PLACEHOLDER");
+                
+                if (cargo.getSenderId() != null) {
+                    userRepository.findById(cargo.getSenderId()).ifPresent(senderUser -> 
+                        emailService.sendQrCodeEmail(senderUser.getEmail(), cargo.getTrackingNumber(), cargo.getQrCode() != null ? cargo.getQrCode() : "QR_PLACEHOLDER")
+                    );
+                }
+            }
+            
+            responses.add(mapToResponse(cargoRepository.save(cargo)));
+        }
+        return responses;
+    }
+
+    @Override
+    public com.railpost.dto.response.CargoForecastResponse getIncomingForecast(String officerUsername) {
+        User officer = getOfficer(officerUsername);
+        com.railpost.model.document.Station station = stationRepository.findById(officer.getStationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Station not found"));
+
+        // Simplistic forecast: all DISPATCHED/IN_TRANSIT heading to this station
+        java.util.List<Cargo> incoming = cargoRepository.findByDestinationStationIdAndStatus(station.getId(), CargoStatus.IN_TRANSIT);
+        incoming.addAll(cargoRepository.findByDestinationStationIdAndStatus(station.getId(), CargoStatus.DISPATCHED));
+        
+        return com.railpost.dto.response.CargoForecastResponse.builder()
+                .destinationStationName(station.getName())
+                .incomingCount(incoming.size())
+                .expectedTodayCount(incoming.size())
+                .build();
     }
 
     private CargoResponse mapToResponse(Cargo cargo) {

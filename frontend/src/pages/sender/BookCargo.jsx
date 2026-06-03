@@ -16,6 +16,7 @@ const schema = z.object({
   receiverNic:         z.string().regex(nicRegex, 'Invalid NIC — 9 digits + V/X or 12 digits'),
   receiverEmail:       z.string().email('Invalid receiver email'),
   receiverPhone:       z.string().regex(/^0[0-9]{9}$/, 'Must be 10 digits starting with 0'),
+  originStationId:     z.string().min(1, 'Please select an origin station'),
   destinationStationId: z.string().min(1, 'Please select a destination station'),
   category:            z.string().min(1, 'Please select a cargo category'),
   declaredValue:       z.string().min(1, 'Declared value is required')
@@ -143,10 +144,20 @@ export default function BookCargo() {
           </h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
 
+            <Field label="Origin Station" error={errors.originStationId?.message} icon={MapPin}>
+              <select {...register('originStationId')}
+                      className={`${inputClass()} bg-white`}>
+                <option value="">Select origin...</option>
+                {stations.map(s => (
+                  <option key={s.id} value={s.id}>{s.name} — {s.city}</option>
+                ))}
+              </select>
+            </Field>
+
             <Field label="Destination Station" error={errors.destinationStationId?.message} icon={MapPin}>
               <select {...register('destinationStationId')}
                       className={`${inputClass()} bg-white`}>
-                <option value="">Select station...</option>
+                <option value="">Select destination...</option>
                 {stations.map(s => (
                   <option key={s.id} value={s.id}>{s.name} — {s.city}</option>
                 ))}

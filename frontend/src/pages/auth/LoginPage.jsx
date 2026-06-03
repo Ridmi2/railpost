@@ -18,7 +18,7 @@ const ROLE_REDIRECT = {
   STATION_MASTER:  '/station-master/dashboard',
   STATION_OFFICER: '/officer/dashboard',
   SENDER:          '/sender/dashboard',
-  REVIEWER:        '/reviewer/dashboard',
+  REVIEWER:        '/track',
 };
 
 export default function LoginPage() {

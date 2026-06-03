@@ -93,6 +93,9 @@ public class Cargo {
     @Field("status_history")
     private List<StatusUpdate> statusHistory = new ArrayList<>();
 
+    @Field("current_train_id")
+    private String currentTrainId;
+
     @Field("train_number")
     private String trainNumber;
 

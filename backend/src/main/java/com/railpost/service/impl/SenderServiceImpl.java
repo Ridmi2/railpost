@@ -30,6 +30,7 @@ public class SenderServiceImpl implements SenderService {
     private final CargoRepository cargoRepository;
     private final UserRepository   userRepository;
     private final StationRepository stationRepository;
+    private final com.railpost.service.EmailService emailService;
     private final Random random = new Random();
 
     @Override
@@ -38,6 +39,9 @@ public class SenderServiceImpl implements SenderService {
 
         Station destination = stationRepository.findById(req.getDestinationStationId())
                 .orElseThrow(() -> new ResourceNotFoundException("Destination station not found"));
+
+        Station origin = stationRepository.findById(req.getOriginStationId())
+                .orElseThrow(() -> new ResourceNotFoundException("Origin station not found"));
 
         String trackingNumber = generateTrackingNumber();
 
@@ -50,6 +54,8 @@ public class SenderServiceImpl implements SenderService {
                 .receiverNic(req.getReceiverNic().toUpperCase())
                 .receiverEmail(req.getReceiverEmail())
                 .receiverPhone(req.getReceiverPhone())
+                .originStationId(origin.getId())
+                .originStationName(origin.getName())
                 .destinationStationId(destination.getId())
                 .destinationStationName(destination.getName())
                 .category(req.getCategory())
@@ -74,6 +80,13 @@ public class SenderServiceImpl implements SenderService {
     public List<CargoResponse> getMyShipments(String senderEmail) {
         User sender = getUser(senderEmail);
         return cargoRepository.findBySenderIdOrderByCreatedAtDesc(sender.getId())
+                .stream().map(this::toResponse).toList();
+    }
+
+    @Override
+    public List<CargoResponse> getIncomingShipments(String userEmail) {
+        User user = getUser(userEmail);
+        return cargoRepository.findByReceiverEmailOrderByCreatedAtDesc(user.getEmail())
                 .stream().map(this::toResponse).toList();
     }
 
@@ -105,6 +118,19 @@ public class SenderServiceImpl implements SenderService {
                 .build());
 
         return toResponse(cargoRepository.save(cargo));
+    }
+
+    @Override
+    public void shareQrCode(String senderEmail, String trackingNumber, String recipientEmail) {
+        User user = getUser(senderEmail);
+        Cargo cargo = cargoRepository.findByTrackingNumber(trackingNumber)
+                .orElseThrow(() -> new ResourceNotFoundException("Cargo not found"));
+
+        if (!cargo.getSenderId().equals(user.getId()) && !user.getEmail().equals(cargo.getReceiverEmail())) {
+            throw new UnauthorizedException("You can only share QR codes for your own shipments");
+        }
+
+        emailService.sendQrCodeEmail(recipientEmail, trackingNumber, cargo.getQrCode() != null ? cargo.getQrCode() : "QR_PLACEHOLDER");
     }
 
     @Override
@@ -141,6 +167,7 @@ public class SenderServiceImpl implements SenderService {
             case BOOKED           -> "Booked";
             case DISPATCHED       -> "Dispatched";
             case IN_TRANSIT       -> "In Transit";
+            case IN_TRANSIT_HUB_SORTING -> "In Transit (Hub Sorting)";
             case ARRIVED          -> "Arrived at Destination";
             case DELIVERED        -> "Delivered";
             case CANCELLED        -> "Cancelled";

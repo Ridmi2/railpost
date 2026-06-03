@@ -32,6 +32,9 @@ public class BookCargoRequest {
     @NotNull(message = "Cargo category is required")
     private CargoCategory category;
 
+    @NotBlank(message = "Origin station is required")
+    private String originStationId;
+
     @NotBlank(message = "Destination station is required")
     private String destinationStationId;
 

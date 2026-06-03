@@ -40,11 +40,18 @@ public class SenderController {
                 .body(ApiResponse.success("Cargo booked successfully", response));
     }
 
-    @GetMapping("/cargo")
+    @GetMapping("/shipments")
     public ResponseEntity<ApiResponse<List<CargoResponse>>> getMyShipments(
             @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.ok(
-                ApiResponse.success(senderService.getMyShipments(user.getUsername())));
+        return ResponseEntity.ok(ApiResponse.success(
+                "Shipments retrieved", senderService.getMyShipments(user.getUsername())));
+    }
+
+    @GetMapping("/incoming")
+    public ResponseEntity<ApiResponse<List<CargoResponse>>> getIncomingShipments(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Incoming shipments retrieved", senderService.getIncomingShipments(user.getUsername())));
     }
 
     @GetMapping("/cargo/track/{trackingNumber}")
@@ -52,6 +59,15 @@ public class SenderController {
             @PathVariable String trackingNumber) {
         return ResponseEntity.ok(
                 ApiResponse.success(senderService.trackCargo(trackingNumber)));
+    }
+
+    @PostMapping("/cargo/track/{trackingNumber}/share")
+    public ResponseEntity<ApiResponse<Void>> shareQrCode(
+            @AuthenticationPrincipal UserDetails user,
+            @PathVariable String trackingNumber,
+            @RequestBody java.util.Map<String, String> requestBody) {
+        senderService.shareQrCode(user.getUsername(), trackingNumber, requestBody.get("email"));
+        return ResponseEntity.ok(ApiResponse.success("QR Code shared successfully", null));
     }
 
     @PatchMapping("/cargo/{cargoId}/cancel")

@@ -6,6 +6,7 @@ import com.railpost.dto.response.ApiResponse;
 import com.railpost.dto.response.CargoResponse;
 import com.railpost.service.StationOfficerService;
 import jakarta.validation.Valid;
+import com.railpost.repository.TrainRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -20,6 +21,7 @@ import org.springframework.web.bind.annotation.*;
 public class StationOfficerController {
 
     private final StationOfficerService officerService;
+    private final TrainRepository trainRepository;
 
     @GetMapping("/cargo/{trackingNumber}")
     public ResponseEntity<ApiResponse<CargoResponse>> getCargo(
@@ -29,12 +31,30 @@ public class StationOfficerController {
     }
 
     @PatchMapping("/cargo/{trackingNumber}/status")
-    public ResponseEntity<ApiResponse<CargoResponse>> updateStatus(
+    public ResponseEntity<ApiResponse<CargoResponse>> updateCargoStatus(
             @PathVariable String trackingNumber,
             @Valid @RequestBody UpdateCargoStatusRequest request,
             @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success("Status updated successfully",
+        return ResponseEntity.ok(ApiResponse.success(
+                "Cargo status updated",
                 officerService.updateCargoStatus(trackingNumber, request, user.getUsername())));
+    }
+
+    @PostMapping("/cargo/dispatch")
+    public ResponseEntity<ApiResponse<java.util.List<CargoResponse>>> dispatchCargo(
+            @Valid @RequestBody com.railpost.dto.request.DispatchCargoRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Cargo dispatched successfully",
+                officerService.dispatchCargo(request, user.getUsername())));
+    }
+
+    @GetMapping("/cargo/forecast")
+    public ResponseEntity<ApiResponse<com.railpost.dto.response.CargoForecastResponse>> getIncomingForecast(
+            @AuthenticationPrincipal UserDetails user) {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Forecast retrieved",
+                officerService.getIncomingForecast(user.getUsername())));
     }
 
     @PostMapping("/cargo/{trackingNumber}/otp")
@@ -52,7 +72,15 @@ public class StationOfficerController {
             @PathVariable String trackingNumber,
             @Valid @RequestBody VerifyOtpRequest request,
             @AuthenticationPrincipal UserDetails user) {
-        return ResponseEntity.ok(ApiResponse.success("Cargo delivered successfully",
+        return ResponseEntity.ok(ApiResponse.success(
+                "Cargo delivered successfully",
                 officerService.verifyOtpAndDeliver(trackingNumber, request, user.getUsername())));
+    }
+
+    @GetMapping("/trains")
+    public ResponseEntity<ApiResponse<java.util.List<com.railpost.model.document.Train>>> getTrains() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Trains retrieved successfully",
+                trainRepository.findAll()));
     }
 }

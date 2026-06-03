@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Package, Search, X, RefreshCw } from 'lucide-react';
 import { senderApi } from '../../api/endpoints/senderApi';
 import toast from 'react-hot-toast';
+import ShareQrModal from '../../components/ui/ShareQrModal';
 
 const STATUS_COLORS = {
   PENDING_DROP_OFF: 'bg-amber-100 text-amber-700',
@@ -16,17 +17,24 @@ const STATUS_COLORS = {
 
 export default function MyShipments() {
   const [shipments, setShipments] = useState([]);
+  const [incoming,  setIncoming]  = useState([]);
+  const [activeTab, setActiveTab] = useState('bookings'); // 'bookings' | 'incoming'
   const [filtered,  setFiltered]  = useState([]);
   const [search,    setSearch]    = useState('');
   const [filter,    setFilter]    = useState('ALL');
   const [loading,   setLoading]   = useState(true);
   const [cancelling, setCancelling] = useState(null);
+  const [sharingQr,  setSharingQr] = useState(null);
 
   const fetchShipments = async () => {
     setLoading(true);
     try {
-      const res = await senderApi.getShipments();
-      setShipments(res.data.data || []);
+      const [shipmentsRes, incomingRes] = await Promise.all([
+        senderApi.getShipments(),
+        senderApi.getIncoming()
+      ]);
+      setShipments(shipmentsRes.data.data || []);
+      setIncoming(incomingRes.data.data || []);
     } catch {
       toast.error('Failed to load shipments');
     } finally {
@@ -37,14 +45,14 @@ export default function MyShipments() {
   useEffect(() => { fetchShipments(); }, []);
 
   useEffect(() => {
-    let list = shipments;
+    let list = activeTab === 'bookings' ? shipments : incoming;
     if (filter !== 'ALL') list = list.filter(s => s.status === filter);
     if (search) list = list.filter(s =>
       s.trackingNumber.toLowerCase().includes(search.toLowerCase()) ||
       s.receiverName.toLowerCase().includes(search.toLowerCase()) ||
       s.destinationStationName?.toLowerCase().includes(search.toLowerCase()));
     setFiltered(list);
-  }, [shipments, filter, search]);
+  }, [shipments, incoming, activeTab, filter, search]);
 
   const cancel = async (cargoId) => {
     if (!confirm('Cancel this booking?')) return;
@@ -64,15 +72,33 @@ export default function MyShipments() {
 
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-6 gap-4">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">My Shipments</h1>
-          <p className="text-gray-500 text-sm mt-0.5">{shipments.length} total shipments</p>
+          <p className="text-gray-500 text-sm mt-0.5">Track your sent and incoming cargo</p>
         </div>
         <button onClick={fetchShipments}
-          className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600
-                     border border-gray-200 rounded-lg px-3 py-2 bg-white transition-colors">
+          className="flex items-center justify-center gap-2 text-sm text-gray-500 hover:text-blue-600
+                     border border-gray-200 rounded-lg px-3 py-2 bg-white transition-colors w-full sm:w-auto">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />Refresh
+        </button>
+      </div>
+
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200 mb-6">
+        <button 
+          onClick={() => setActiveTab('bookings')}
+          className={`pb-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'bookings' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}>
+          My Bookings ({shipments.length})
+        </button>
+        <button 
+          onClick={() => setActiveTab('incoming')}
+          className={`pb-3 px-4 text-sm font-medium border-b-2 transition-colors ${
+            activeTab === 'incoming' ? 'border-blue-600 text-blue-600' : 'border-transparent text-gray-500 hover:text-gray-700'
+          }`}>
+          Incoming Deliveries ({incoming.length})
         </button>
       </div>
 
@@ -145,12 +171,18 @@ export default function MyShipments() {
                       {new Date(s.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-5 py-3.5">
-                      {s.status === 'PENDING_DROP_OFF' && (
+                      {s.status === 'PENDING_DROP_OFF' && activeTab === 'bookings' && (
                         <button onClick={() => cancel(s.id)} disabled={cancelling === s.id}
                           className="text-xs text-red-600 hover:text-red-800 flex items-center gap-1
-                                     disabled:opacity-50 font-medium">
+                                     disabled:opacity-50 font-medium mb-1">
                           <X size={12} />
                           {cancelling === s.id ? 'Cancelling...' : 'Cancel'}
+                        </button>
+                      )}
+                      {s.status !== 'PENDING_DROP_OFF' && s.status !== 'CANCELLED' && (
+                        <button onClick={() => setSharingQr(s.trackingNumber)}
+                          className="text-xs text-blue-600 hover:text-blue-800 flex items-center gap-1 font-medium">
+                          Share QR
                         </button>
                       )}
                     </td>
@@ -161,6 +193,13 @@ export default function MyShipments() {
           </div>
         )}
       </div>
+
+      {sharingQr && (
+        <ShareQrModal 
+          trackingNumber={sharingQr} 
+          onClose={() => setSharingQr(null)} 
+        />
+      )}
     </div>
   );
 }

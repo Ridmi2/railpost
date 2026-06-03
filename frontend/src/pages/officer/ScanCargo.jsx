@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Loader2, Package, CheckCircle, Truck, MapPin, KeyRound, AlertCircle } from 'lucide-react';
 import { officerApi } from '../../api/endpoints/officerApi';
 import toast from 'react-hot-toast';
@@ -13,6 +13,15 @@ export default function ScanCargo() {
   const [location, setLocation] = useState('');
   const [note, setNote] = useState('');
   const [updating, setUpdating] = useState(false);
+  
+  // Dispatch states
+  const [trains, setTrains] = useState([]);
+  const [selectedTrain, setSelectedTrain] = useState('');
+
+  // Fetch trains on mount
+  useEffect(() => {
+    officerApi.getTrains().then(res => setTrains(res.data.data || [])).catch(() => {});
+  }, []);
 
   // Delivery states
   const [otpSent, setOtpSent] = useState(false);
@@ -47,22 +56,42 @@ export default function ScanCargo() {
 
   const handleUpdateStatus = async (e) => {
     e.preventDefault();
-    if (!newStatus || !location) {
-      toast.error('Please select status and enter location');
+    if (!newStatus) {
+      toast.error('Please select a status');
+      return;
+    }
+    if (newStatus === 'DISPATCHED' && !selectedTrain) {
+      toast.error('Please select a train for dispatch');
+      return;
+    }
+    if (newStatus !== 'DISPATCHED' && !location) {
+      toast.error('Please enter the current location');
       return;
     }
 
     setUpdating(true);
     try {
-      const res = await officerApi.updateStatus(cargo.trackingNumber, {
-        status: newStatus,
-        location,
-        note
-      });
-      toast.success('Status updated successfully');
-      setCargo(res.data.data);
+      let res;
+      if (newStatus === 'DISPATCHED') {
+        res = await officerApi.dispatchCargo({
+          trainId: selectedTrain,
+          cargoTrackingNumbers: [cargo.trackingNumber]
+        });
+        toast.success('Cargo dispatched successfully');
+        // dispatchCargo returns an array of updated cargo, so take the first one
+        setCargo(res.data.data[0]);
+      } else {
+        res = await officerApi.updateStatus(cargo.trackingNumber, {
+          status: newStatus,
+          location,
+          note
+        });
+        toast.success('Status updated successfully');
+        setCargo(res.data.data);
+      }
       setNewStatus('');
       setNote('');
+      setSelectedTrain('');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update status');
     } finally {
@@ -225,19 +254,37 @@ export default function ScanCargo() {
                         >
                           <option value="">Select status...</option>
                           <option value="DISPATCHED">Dispatched (Loaded on Train)</option>
-                          <option value="IN_TRANSIT">In Transit (Intermediate Station)</option>
-                          <option value="ARRIVED">Arrived (Destination Station)</option>
+                          <option value="IN_TRANSIT">In Transit (Passing Through)</option>
+                          <option value="IN_TRANSIT_HUB_SORTING">Unloaded for Transfer / Hub Sorting</option>
+                          <option value="ARRIVED">Arrived (Final Destination)</option>
                         </select>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">Current Location (Station)</label>
-                        <input 
-                          value={location}
-                          onChange={e => setLocation(e.target.value)}
-                          placeholder="e.g. Colombo Fort"
-                          className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                        />
-                      </div>
+                      
+                      {newStatus === 'DISPATCHED' ? (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Select Train</label>
+                          <select 
+                            value={selectedTrain}
+                            onChange={e => setSelectedTrain(e.target.value)}
+                            className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          >
+                            <option value="">Select train...</option>
+                            {trains.map(t => (
+                              <option key={t.id} value={t.id}>{t.trainNo} - {t.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                      ) : (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">Current Location (Station)</label>
+                          <input 
+                            value={location}
+                            onChange={e => setLocation(e.target.value)}
+                            placeholder="e.g. Colombo Fort"
+                            className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Note (Optional)</label>
@@ -251,7 +298,7 @@ export default function ScanCargo() {
                     <div className="flex justify-end pt-2">
                       <button 
                         type="submit"
-                        disabled={updating || !newStatus || !location}
+                        disabled={updating || !newStatus || (newStatus === 'DISPATCHED' ? !selectedTrain : !location)}
                         className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
                       >
                         {updating && <Loader2 className="animate-spin" size={16} />}
