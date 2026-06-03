@@ -89,7 +89,7 @@ export default function SignupPage() {
      placeholder:text-gray-300 transition-all`;
 
   return (
-    <div className="min-h-screen bg-[#1e3a6e] flex items-center justify-center p-4 py-10">
+    <div className="min-h-screen bg-[#1e3a6e] flex items-center justify-center p-4 py-10 sm:p-8">
       <div className="w-full max-w-lg">
 
         {/* Logo */}
