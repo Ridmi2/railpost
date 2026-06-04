@@ -48,6 +48,10 @@ public class WalkInCargoRequest {
     @NotBlank(message = "Destination station is required")
     private String destinationStationId;
 
+    @NotNull(message = "Distance is required")
+    @DecimalMin(value = "0.1", message = "Distance must be positive")
+    private Double distance;
+
     @NotNull(message = "Weight is required")
     @DecimalMin(value = "0.1", message = "Weight must be at least 0.1 kg")
     @DecimalMax(value = "1000.0", message = "Weight cannot exceed 1000 kg")

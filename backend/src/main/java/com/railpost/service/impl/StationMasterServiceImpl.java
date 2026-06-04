@@ -18,6 +18,7 @@ import com.railpost.repository.CargoRepository;
 import com.railpost.repository.StationRepository;
 import com.railpost.repository.UserRepository;
 import com.railpost.service.StationMasterService;
+import com.railpost.service.CostCalculatorService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -36,6 +37,7 @@ public class StationMasterServiceImpl implements StationMasterService {
     private final UserRepository    userRepository;
     private final StationRepository stationRepository;
     private final CargoRepository   cargoRepository;
+    private final CostCalculatorService costCalculatorService;
     private final PasswordEncoder   passwordEncoder;
     private final Random random = new Random();
 
@@ -88,10 +90,13 @@ public class StationMasterServiceImpl implements StationMasterService {
             throw new UnauthorizedException("Origin and destination stations cannot be the same");
 
         // Cost calculation
-        double baseRate = req.getTrainType().name().equals("EXPRESS") ? 15.0 : 8.0;
-        double transportCost = Math.round(req.getWeight() * baseRate * 10.0) / 10.0;
-        double insuranceCost = Math.round(req.getDeclaredValue() * 0.02 * 100.0) / 100.0;
-        double totalCost     = Math.round((transportCost + insuranceCost) * 100.0) / 100.0;
+        double transportCost = costCalculatorService.calculateTransportCost(
+                req.getDistance(),
+                req.getWeight(),
+                req.getTrainType(),
+                req.getCategory());
+        double insuranceCost = costCalculatorService.calculateInsuranceCost(req.getDeclaredValue());
+        double totalCost = Math.round((transportCost + insuranceCost) * 100.0) / 100.0;
 
         String trackingNumber = generateTrackingNumber();
 
@@ -202,6 +207,9 @@ public class StationMasterServiceImpl implements StationMasterService {
     }
 
     private Station getStation(String stationId) {
+        if (stationId == null) {
+            throw new ResourceNotFoundException("Station not assigned");
+        }
         return stationRepository.findById(stationId)
                 .orElseThrow(() -> new ResourceNotFoundException("Station not found"));
     }
@@ -236,8 +244,8 @@ public class StationMasterServiceImpl implements StationMasterService {
                 .transportCost(c.getTransportCost())
                 .insuranceCost(c.getInsuranceCost())
                 .totalCost(c.getTotalCost())
-                .status(c.getStatus())
-                .statusLabel(c.getStatus().name().replace("_", " "))
+                .status(c.getStatus() != null ? c.getStatus() : CargoStatus.PENDING_DROP_OFF)
+                .statusLabel(c.getStatus() != null ? c.getStatus().name().replace("_", " ") : CargoStatus.PENDING_DROP_OFF.name().replace("_", " "))
                 .statusHistory(c.getStatusHistory())
                 .trainNumber(c.getTrainNumber())
                 .createdAt(c.getCreatedAt())

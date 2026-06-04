@@ -258,6 +258,7 @@ public class AdminServiceImpl implements AdminService {
         double totalWeight = allCargo.stream().mapToDouble(c -> c.getWeight() != null ? c.getWeight() : 0.0).sum();
         
         java.util.Map<String, Long> statusDistribution = allCargo.stream()
+                .filter(c -> c.getStatus() != null)
                 .collect(java.util.stream.Collectors.groupingBy(c -> c.getStatus().name(), java.util.stream.Collectors.counting()));
                 
         List<com.railpost.dto.response.ReportSummaryResponse.StationRevenueItem> stationRevenue = allCargo.stream()

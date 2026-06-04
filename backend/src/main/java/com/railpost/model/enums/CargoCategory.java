@@ -1,10 +1,12 @@
 package com.railpost.model.enums;
 
 public enum CargoCategory {
-    GENERAL_GOODS,
-    FRAGILE,
-    PERISHABLE,
-    DOCUMENTS,
-    ELECTRONICS,
-    HAZARDOUS
+    GENERAL,
+    LETTERS,
+    FISH,
+    FURNITURE,
+    CHICKS,
+    LIGHT_WEIGHT,
+    MACHINES,
+    HIGH_VALUE
 }

@@ -2,7 +2,11 @@ package com.railpost.controller;
 
 import com.railpost.dto.response.ApiResponse;
 import com.railpost.dto.response.CargoResponse;
+import com.railpost.dto.request.CostCalculationRequest;
+import com.railpost.dto.response.CostCalculationResponse;
+import com.railpost.service.CostCalculatorService;
 import com.railpost.service.StationOfficerService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -13,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 public class PublicController {
 
     private final StationOfficerService officerService;
+    private final CostCalculatorService costCalculatorService;
 
     @GetMapping("/cargo/track/{trackingNumber}")
     public ResponseEntity<ApiResponse<CargoResponse>> publicTrackCargo(
@@ -33,6 +38,27 @@ public class PublicController {
         response.setReceiverPhone("********" + (response.getReceiverPhone() != null && response.getReceiverPhone().length() >= 2 ? response.getReceiverPhone().substring(response.getReceiverPhone().length() - 2) : ""));
         response.setReceiverNic("*********");
         
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @PostMapping("/cargo/calculate-cost")
+    public ResponseEntity<ApiResponse<CostCalculationResponse>> calculateCost(
+            @Valid @RequestBody CostCalculationRequest request) {
+        
+        double transport = costCalculatorService.calculateTransportCost(
+                request.getDistance(), 
+                request.getWeight(), 
+                request.getTrainType(), 
+                request.getCategory());
+                
+        double insurance = costCalculatorService.calculateInsuranceCost(request.getDeclaredValue());
+        
+        CostCalculationResponse response = CostCalculationResponse.builder()
+                .transportCost(transport)
+                .insuranceCost(insurance)
+                .totalCost(transport + insurance)
+                .build();
+                
         return ResponseEntity.ok(ApiResponse.success(response));
     }
 }

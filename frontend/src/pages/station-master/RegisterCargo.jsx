@@ -7,6 +7,7 @@ import { Loader2, User, Phone, Mail, CreditCard,
          Package, MapPin, DollarSign, FileText, Weight } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { stationMasterApi } from '../../api/endpoints/stationMasterApi';
+import { publicApi } from '../../api/endpoints/publicApi';
 import ReceiptModal from '../../components/ui/ReceiptModal';
 
 const nicRegex = /^(\d{9}[VvXx]|\d{12})$/;
@@ -23,21 +24,25 @@ const schema = z.object({
   receiverEmail:        z.string().regex(gmailRegex, 'Enter valid Gmail').optional().or(z.literal('')),
   category:             z.string().min(1, 'Select a category'),
   destinationStationId: z.string().min(1, 'Select destination station'),
+  distance:             z.string().min(1, 'Distance is required')
+                          .refine(v => !isNaN(v) && Number(v) > 0, 'Must be positive'),
   weight:               z.string().min(1, 'Weight is required')
                           .refine(v => !isNaN(v) && Number(v) > 0, 'Must be positive'),
   declaredValue:        z.string().min(1, 'Declared value is required')
-                          .refine(v => !isNaN(v) && Number(v) > 0, 'Must be positive'),
+                          .refine(v => !isNaN(v) && Number(v) >= 0, 'Must be positive'),
   trainType:            z.string().min(1, 'Select train type'),
   description:          z.string().max(500).optional(),
 });
 
 const CATEGORIES = [
-  { value: 'GENERAL_GOODS', label: 'General Goods'       },
-  { value: 'FRAGILE',       label: 'Fragile Items'        },
-  { value: 'PERISHABLE',    label: 'Perishable'           },
-  { value: 'DOCUMENTS',     label: 'Documents'            },
-  { value: 'ELECTRONICS',   label: 'Electronics'          },
-  { value: 'HAZARDOUS',     label: 'Hazardous Materials'  },
+  { value: 'GENERAL',      label: 'General Goods' },
+  { value: 'LETTERS',      label: 'Letters' },
+  { value: 'FISH',         label: 'Fish accompanied by owner' },
+  { value: 'FURNITURE',    label: 'Furniture in Small Lots' },
+  { value: 'CHICKS',       label: 'Chicks in Ventilated Boxes' },
+  { value: 'LIGHT_WEIGHT', label: 'Light weight Articles (Coffins, Umbrellas, etc.)' },
+  { value: 'MACHINES',     label: 'Machines (not exceeding 50 Kg)' },
+  { value: 'HIGH_VALUE',   label: 'High Value (Lottery, Medicines, Tires, Glass, Electronics)' },
 ];
 
 function Field({ label, error, icon: Icon, hint, children }) {
@@ -77,22 +82,34 @@ export default function RegisterCargo() {
   }, []);
 
   const weightVal = watch('weight');
+  const distanceVal = watch('distance');
   const declaredVal = watch('declaredValue');
   const trainTypeVal = watch('trainType');
+  const categoryVal = watch('category');
 
   // Live cost estimate
   useEffect(() => {
     const w = parseFloat(weightVal);
-    const d = parseFloat(declaredVal);
-    if (!isNaN(w) && !isNaN(d) && w > 0 && d > 0 && trainTypeVal) {
-      const rate = trainTypeVal === 'EXPRESS' ? 15.0 : 8.0;
-      const transport = Math.round(w * rate * 10) / 10;
-      const insurance = Math.round(d * 0.02 * 100) / 100;
-      setEstimatedCost({ transport, insurance, total: Math.round((transport + insurance) * 100) / 100 });
+    const d = parseFloat(distanceVal);
+    const v = parseFloat(declaredVal) || 0;
+    
+    if (!isNaN(w) && !isNaN(d) && w > 0 && d > 0 && trainTypeVal && categoryVal) {
+      publicApi.calculateCost({
+        distance: d,
+        weight: w,
+        trainType: trainTypeVal,
+        category: categoryVal,
+        declaredValue: v
+      }).then(res => {
+        setEstimatedCost(res.data.data);
+      }).catch(err => {
+        console.error('Failed to calculate cost', err);
+        setEstimatedCost(null);
+      });
     } else {
       setEstimatedCost(null);
     }
-  }, [weightVal, declaredVal, trainTypeVal]);
+  }, [weightVal, distanceVal, declaredVal, trainTypeVal, categoryVal]);
 
   const onSubmit = async (data) => {
     setLoading(true);
@@ -197,9 +214,15 @@ export default function RegisterCargo() {
               <select {...register('trainType')}
                       className={`${iCls()} bg-white`}>
                 <option value="">Select train type...</option>
-                <option value="EXPRESS">Express Train (LKR 15/kg)</option>
-                <option value="GOODS">Goods Train (LKR 8/kg)</option>
+                <option value="EXPRESS">Mail, Intercity & Express Trains</option>
+                <option value="NORMAL">Normal Trains</option>
               </select>
+            </Field>
+            <Field label="Distance (Km)" error={errors.distance?.message} icon={MapPin}
+                   hint="Distance between origin and destination">
+              <input {...register('distance')} type="number" step="0.1" min="0.1"
+                     placeholder="e.g. 120"
+                     className={iCls()} />
             </Field>
             <Field label="Weight (kg)" error={errors.weight?.message} icon={Weight}
                    hint="Actual weight from station scale">
@@ -233,9 +256,9 @@ export default function RegisterCargo() {
               </p>
               <div className="grid grid-cols-3 gap-3 text-center">
                 {[
-                  { label: 'Transport',  value: estimatedCost.transport  },
-                  { label: 'Insurance',  value: estimatedCost.insurance  },
-                  { label: 'Total',      value: estimatedCost.total, bold: true },
+                  { label: 'Transport',  value: estimatedCost.transportCost  },
+                  { label: 'Insurance',  value: estimatedCost.insuranceCost  },
+                  { label: 'Total',      value: estimatedCost.totalCost, bold: true },
                 ].map(({ label, value, bold }) => (
                   <div key={label} className={`bg-white rounded-lg p-2 ${bold ? 'ring-1 ring-blue-400' : ''}`}>
                     <p className="text-xs text-gray-500">{label}</p>

@@ -25,12 +25,14 @@ const schema = z.object({
 });
 
 const CATEGORIES = [
-  { value: 'GENERAL_GOODS', label: 'General Goods'  },
-  { value: 'FRAGILE',       label: 'Fragile Items'  },
-  { value: 'PERISHABLE',    label: 'Perishable'     },
-  { value: 'DOCUMENTS',     label: 'Documents'      },
-  { value: 'ELECTRONICS',   label: 'Electronics'    },
-  { value: 'HAZARDOUS',     label: 'Hazardous Materials' },
+  { value: 'GENERAL',      label: 'General Goods' },
+  { value: 'LETTERS',      label: 'Letters' },
+  { value: 'FISH',         label: 'Fish accompanied by owner' },
+  { value: 'FURNITURE',    label: 'Furniture in Small Lots' },
+  { value: 'CHICKS',       label: 'Chicks in Ventilated Boxes' },
+  { value: 'LIGHT_WEIGHT', label: 'Light weight Articles (Coffins, Umbrellas, etc.)' },
+  { value: 'MACHINES',     label: 'Machines (not exceeding 50 Kg)' },
+  { value: 'HIGH_VALUE',   label: 'High Value (Lottery, Medicines, Tires, Glass, Electronics)' },
 ];
 
 function Field({ label, error, icon: Icon, children, hint }) {
