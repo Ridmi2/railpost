@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/endpoints/adminApi';
 import { Search, Plus, X, Building2, MapPin, Phone, CheckCircle2, AlertTriangle, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { getAllLines, getStationsByLine } from '../../data/railwayLines';
 
 export default function AdminStations() {
   const [stations, setStations] = useState([]);
@@ -12,12 +13,13 @@ export default function AdminStations() {
 
   // Form State
   const [formData, setFormData] = useState({
-    code: '',
+    line: '',
     name: '',
     city: '',
     province: '',
     address: '',
     phone: '',
+    distanceToFort: ''
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -52,30 +54,44 @@ export default function AdminStations() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: name === 'code' ? value.toUpperCase().trim() : value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleNameChange = (e) => {
+    const value = e.target.value;
+    const newForm = { ...formData, name: value };
+    
+    // Auto-fill distance and phone if it matches a predefined station
+    if (formData.line) {
+      const predefined = getStationsByLine(formData.line).find(s => s.name === value);
+      if (predefined) {
+        newForm.distanceToFort = predefined.distanceToFort ?? '';
+        newForm.phone = predefined.phone || '';
+      }
+    }
+    setFormData(newForm);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     
     // Validations
-    if (!/^[A-Z0-9]{2,8}$/.test(formData.code)) {
-      toast.error('Station code must be 2 to 8 uppercase alphanumeric characters');
-      return;
-    }
+    if (!formData.line) return toast.error('Railway Line is required');
     if (!formData.name.trim()) return toast.error('Station name is required');
     if (!formData.city.trim()) return toast.error('City is required');
     if (!formData.province.trim()) return toast.error('Province is required');
 
     setSubmitting(true);
     try {
-      const res = await adminApi.createStation(formData);
+      const payload = {
+        ...formData,
+        distanceToFort: formData.distanceToFort ? parseFloat(formData.distanceToFort) : null
+      };
+      
+      const res = await adminApi.createStation(payload);
       toast.success(res.data.message || 'Station registered successfully');
       setShowModal(false);
-      setFormData({ code: '', name: '', city: '', province: '', address: '', phone: '' });
+      setFormData({ line: '', name: '', city: '', province: '', address: '', phone: '', distanceToFort: '' });
       fetchStations();
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to create station');
@@ -86,10 +102,11 @@ export default function AdminStations() {
 
   const filteredStations = stations.filter(station => {
     const matchesSearch = 
-      station.code.toLowerCase().includes(search.toLowerCase()) ||
-      station.name.toLowerCase().includes(search.toLowerCase()) ||
-      station.city.toLowerCase().includes(search.toLowerCase()) ||
-      station.province.toLowerCase().includes(search.toLowerCase());
+      (station.code && station.code.toLowerCase().includes(search.toLowerCase())) ||
+      (station.name && station.name.toLowerCase().includes(search.toLowerCase())) ||
+      (station.city && station.city.toLowerCase().includes(search.toLowerCase())) ||
+      (station.province && station.province.toLowerCase().includes(search.toLowerCase())) ||
+      (station.line && station.line.toLowerCase().includes(search.toLowerCase()));
       
     const matchesFilter = statusFilter === 'ALL' || station.status === statusFilter;
     
@@ -128,7 +145,7 @@ export default function AdminStations() {
           <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
           <input
             type="text"
-            placeholder="Search stations by code, name, city, province..."
+            placeholder="Search stations by code, name, city, line..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="w-full pl-10 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
@@ -178,7 +195,7 @@ export default function AdminStations() {
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="bg-gray-50/75 border-b border-gray-100 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-                  <th className="px-6 py-4">Station Code</th>
+                  <th className="px-6 py-4">Code / Line</th>
                   <th className="px-6 py-4">Station Name</th>
                   <th className="px-6 py-4">Location</th>
                   <th className="px-6 py-4">Contact</th>
@@ -189,14 +206,17 @@ export default function AdminStations() {
               <tbody className="divide-y divide-gray-50 text-sm">
                 {filteredStations.map(station => (
                   <tr key={station.id} className="hover:bg-gray-50/50 transition-colors">
-                    <td className="px-6 py-4.5 font-bold text-blue-600 tracking-wider">
-                      <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs">
-                        {station.code}
-                      </span>
+                    <td className="px-6 py-4.5">
+                      <div className="font-bold text-blue-600 tracking-wider">
+                        <span className="bg-blue-50 text-blue-700 px-2.5 py-1 rounded-md text-xs">
+                          {station.code || 'N/A'}
+                        </span>
+                      </div>
+                      <div className="text-xs text-gray-500 mt-1.5 font-medium">{station.line || 'No Line'}</div>
                     </td>
                     <td className="px-6 py-4.5">
                       <div className="font-semibold text-gray-900">{station.name}</div>
-                      {station.address && <div className="text-xs text-gray-400 mt-0.5">{station.address}</div>}
+                      {station.distanceToFort != null && <div className="text-xs text-emerald-600 mt-0.5 font-medium">{station.distanceToFort} km to Fort</div>}
                     </td>
                     <td className="px-6 py-4.5 text-gray-600">
                       <div className="flex items-center gap-1.5 text-gray-700">
@@ -259,7 +279,7 @@ export default function AdminStations() {
               </h2>
               <button 
                 onClick={() => setShowModal(false)}
-                className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-50 rounded-lg transition-all"
+                className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-50 rounded-lg transition-all cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -267,37 +287,45 @@ export default function AdminStations() {
 
             {/* Modal Form */}
             <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                    Station Code *
-                  </label>
-                  <input
-                    type="text"
-                    name="code"
-                    maxLength={8}
-                    required
-                    placeholder="e.g. FOT"
-                    value={formData.code}
-                    onChange={handleInputChange}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
-                  />
-                  <p className="text-[10px] text-gray-400 mt-1">2-8 letters uppercase.</p>
-                </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                    Station Name *
-                  </label>
-                  <input
-                    type="text"
-                    name="name"
-                    required
-                    placeholder="e.g. Colombo Fort"
-                    value={formData.name}
-                    onChange={handleInputChange}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  />
-                </div>
+              
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
+                  Railway Line *
+                </label>
+                <select
+                  name="line"
+                  required
+                  value={formData.line}
+                  onChange={handleInputChange}
+                  className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                >
+                  <option value="">Select Line</option>
+                  {getAllLines().map(line => (
+                    <option key={line} value={line}>{line}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
+                  Station Name *
+                </label>
+                <input
+                  type="text"
+                  name="name"
+                  required
+                  list="station-names"
+                  placeholder="Select or type station name"
+                  value={formData.name}
+                  onChange={handleNameChange}
+                  className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                />
+                <datalist id="station-names">
+                  {getStationsByLine(formData.line).map((station, idx) => (
+                    <option key={idx} value={station.name} />
+                  ))}
+                </datalist>
+                <p className="text-[10px] text-gray-400 mt-1">Station code will be auto-generated based on the line.</p>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -334,6 +362,36 @@ export default function AdminStations() {
                 </div>
               </div>
 
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
+                    Distance to Fort (km)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.001"
+                    name="distanceToFort"
+                    placeholder="e.g. 15.5"
+                    value={formData.distanceToFort}
+                    onChange={handleInputChange}
+                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
+                    Contact Phone
+                  </label>
+                  <input
+                    type="tel"
+                    name="phone"
+                    placeholder="e.g. 011-2965230"
+                    value={formData.phone}
+                    onChange={handleInputChange}
+                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
+                  />
+                </div>
+              </div>
+
               <div>
                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
                   Physical Address
@@ -343,20 +401,6 @@ export default function AdminStations() {
                   name="address"
                   placeholder="e.g. Olcott Mawatha, Colombo"
                   value={formData.address}
-                  onChange={handleInputChange}
-                  className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                  Contact Phone
-                </label>
-                <input
-                  type="tel"
-                  name="phone"
-                  placeholder="e.g. +94112421281"
-                  value={formData.phone}
                   onChange={handleInputChange}
                   className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
                 />

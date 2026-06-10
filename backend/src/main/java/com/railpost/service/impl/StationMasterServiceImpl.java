@@ -17,6 +17,8 @@ import com.railpost.model.enums.UserStatus;
 import com.railpost.repository.CargoRepository;
 import com.railpost.repository.StationRepository;
 import com.railpost.repository.UserRepository;
+import com.railpost.repository.TrainRepository;
+import com.railpost.model.document.Train;
 import com.railpost.service.StationMasterService;
 import com.railpost.service.CostCalculatorService;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +29,8 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Random;
+import java.util.List;
+import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -37,9 +40,10 @@ public class StationMasterServiceImpl implements StationMasterService {
     private final UserRepository    userRepository;
     private final StationRepository stationRepository;
     private final CargoRepository   cargoRepository;
+    private final TrainRepository   trainRepository;
     private final CostCalculatorService costCalculatorService;
     private final PasswordEncoder   passwordEncoder;
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
     // ── Dashboard ─────────────────────────────────────────────────────────────
     @Override
@@ -100,6 +104,15 @@ public class StationMasterServiceImpl implements StationMasterService {
 
         String trackingNumber = generateTrackingNumber();
 
+        String currentTrainId = null;
+        String trainNumber = null;
+        if (req.getTrainId() != null && !req.getTrainId().isEmpty()) {
+            Train train = trainRepository.findById(req.getTrainId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Assigned Train not found"));
+            currentTrainId = train.getId();
+            trainNumber = train.getTrainNo() + " - " + train.getName();
+        }
+
         Cargo cargo = Cargo.builder()
                 .trackingNumber(trackingNumber)
                 .senderName(req.getSenderName())
@@ -120,6 +133,8 @@ public class StationMasterServiceImpl implements StationMasterService {
                 .transportCost(transportCost)
                 .insuranceCost(insuranceCost)
                 .totalCost(totalCost)
+                .currentTrainId(currentTrainId)
+                .trainNumber(trainNumber)
                 .status(CargoStatus.BOOKED)
                 .stationOfficerId(master.getId())
                 .build();

@@ -22,6 +22,7 @@ import java.util.List;
 public class StationMasterController {
 
     private final StationMasterService stationMasterService;
+    private final com.railpost.repository.TrainRepository trainRepository;
 
     @GetMapping("/dashboard")
     public ResponseEntity<ApiResponse<StationDashboardResponse>> getDashboard(
@@ -69,5 +70,12 @@ public class StationMasterController {
         return ResponseEntity.ok(
                 ApiResponse.success("Status updated",
                         stationMasterService.toggleOfficerStatus(user.getUsername(), id)));
+    }
+
+    @GetMapping("/trains")
+    public ResponseEntity<ApiResponse<List<com.railpost.model.document.Train>>> getTrains() {
+        return ResponseEntity.ok(ApiResponse.success(
+                "Trains retrieved successfully",
+                trainRepository.findAll()));
     }
 }

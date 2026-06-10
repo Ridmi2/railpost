@@ -16,6 +16,8 @@ public class StationResponse {
     private String province;
     private String address;
     private String phone;
+    private String line;
+    private Double distanceToFort;
     private StationStatus status;
     private LocalDateTime createdAt;
 }

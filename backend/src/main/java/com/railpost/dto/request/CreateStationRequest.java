@@ -11,10 +11,12 @@ import lombok.Setter;
 @Setter
 public class CreateStationRequest {
 
-    @NotBlank(message = "Station code is required")
-    @Size(min = 2, max = 8, message = "Code must be 2-8 characters")
-    @Pattern(regexp = "^[A-Z0-9]+$", message = "Code must be uppercase letters and numbers only")
     private String code;
+
+    @NotBlank(message = "Railway line is required")
+    private String line;
+    
+    private Double distanceToFort;
 
     @NotBlank(message = "Station name is required")
     private String name;

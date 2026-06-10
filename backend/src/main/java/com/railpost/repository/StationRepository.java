@@ -14,4 +14,5 @@ public interface StationRepository extends MongoRepository<Station, String> {
     Optional<Station> findByCode(String code);
     List<Station> findByStatus(StationStatus status);
     long countByStatus(StationStatus status);
+    long countByLine(String line);
 }

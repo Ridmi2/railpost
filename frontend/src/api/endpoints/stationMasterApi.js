@@ -8,4 +8,5 @@ export const stationMasterApi = {
   createOfficer:   (data)  => api.post('/station-master/officers', data),
   toggleOfficer:   (id)    => api.patch(`/station-master/officers/${id}/toggle`),
   getStations:     ()      => api.get('/stations'),
+  getTrains:       ()      => api.get('/station-master/trains'),
 };

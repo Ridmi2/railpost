@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Search, Loader2, Package, CheckCircle, Truck, MapPin, KeyRound, AlertCircle } from 'lucide-react';
+import { Search, Loader2, Package, CheckCircle, Truck, MapPin, KeyRound, AlertCircle, Camera, X } from 'lucide-react';
+import { Scanner } from '@yudiel/react-qr-scanner';
 import { officerApi } from '../../api/endpoints/officerApi';
 import toast from 'react-hot-toast';
 
@@ -7,11 +8,14 @@ export default function ScanCargo() {
   const [query, setQuery] = useState('');
   const [cargo, setCargo] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
   
   // Status update states
   const [newStatus, setNewStatus] = useState('');
   const [location, setLocation] = useState('');
   const [note, setNote] = useState('');
+  const [updateTrainType, setUpdateTrainType] = useState('');
+  const [updateTrainId, setUpdateTrainId] = useState('');
   const [updating, setUpdating] = useState(false);
   
   // Dispatch states
@@ -43,6 +47,8 @@ export default function ScanCargo() {
       setNewStatus('');
       setLocation('');
       setNote('');
+      setUpdateTrainType('');
+      setUpdateTrainId('');
     } catch (err) {
       if (err.response?.status === 404) {
         toast.error('Cargo not found');
@@ -57,14 +63,14 @@ export default function ScanCargo() {
   const handleUpdateStatus = async (e) => {
     e.preventDefault();
     if (!newStatus) {
-      toast.error('Please select a status');
+      toast.error('Please select a status (or Keep Current)');
       return;
     }
-    if (newStatus === 'DISPATCHED' && !selectedTrain) {
+    if (newStatus === 'DISPATCHED' && cargo.status !== 'DISPATCHED' && !selectedTrain) {
       toast.error('Please select a train for dispatch');
       return;
     }
-    if (newStatus !== 'DISPATCHED' && !location) {
+    if (newStatus !== 'DISPATCHED' && !location && newStatus !== cargo.status) {
       toast.error('Please enter the current location');
       return;
     }
@@ -72,26 +78,30 @@ export default function ScanCargo() {
     setUpdating(true);
     try {
       let res;
-      if (newStatus === 'DISPATCHED') {
+      // Only call dispatchCargo if it's a NEW dispatch
+      if (newStatus === 'DISPATCHED' && cargo.status !== 'DISPATCHED') {
         res = await officerApi.dispatchCargo({
           trainId: selectedTrain,
           cargoTrackingNumbers: [cargo.trackingNumber]
         });
         toast.success('Cargo dispatched successfully');
-        // dispatchCargo returns an array of updated cargo, so take the first one
         setCargo(res.data.data[0]);
       } else {
         res = await officerApi.updateStatus(cargo.trackingNumber, {
           status: newStatus,
-          location,
-          note
+          location: location || cargo.destinationStationName, // fallback if keeping current
+          note,
+          trainType: updateTrainType || undefined,
+          trainId: updateTrainId || undefined
         });
-        toast.success('Status updated successfully');
+        toast.success('Status/Details updated successfully');
         setCargo(res.data.data);
       }
       setNewStatus('');
       setNote('');
       setSelectedTrain('');
+      setUpdateTrainType('');
+      setUpdateTrainId('');
     } catch (err) {
       toast.error(err.response?.data?.message || 'Failed to update status');
     } finally {
@@ -149,6 +159,14 @@ export default function ScanCargo() {
           />
         </div>
         <button 
+          type="button"
+          onClick={() => setShowScanner(!showScanner)}
+          className="bg-gray-100 hover:bg-gray-200 text-gray-700 font-medium px-4 py-3 rounded-lg transition-colors flex items-center justify-center"
+          title="Scan with Camera"
+        >
+          <Camera size={20} />
+        </button>
+        <button 
           type="submit" 
           disabled={loading}
           className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium px-8 py-3 rounded-lg transition-colors"
@@ -156,6 +174,34 @@ export default function ScanCargo() {
           {loading ? <Loader2 className="animate-spin" /> : 'Search'}
         </button>
       </form>
+
+      {showScanner && (
+        <div className="mb-6 bg-white p-4 rounded-xl shadow-sm border border-gray-100 animate-in fade-in slide-in-from-top-4">
+          <div className="flex justify-between items-center mb-4">
+            <h3 className="font-medium text-gray-900">Scan QR Code using Camera</h3>
+            <button onClick={() => setShowScanner(false)} className="text-gray-500 hover:text-gray-700 p-1 bg-gray-100 rounded-full">
+              <X size={18} />
+            </button>
+          </div>
+          <div className="overflow-hidden rounded-lg bg-black/5 mx-auto relative" style={{ maxWidth: '400px' }}>
+            <Scanner 
+              onScan={(result) => {
+                if (result && result.length > 0) {
+                  const text = result[0].rawValue;
+                  setQuery(text);
+                  setShowScanner(false);
+                  toast.success("QR Code scanned successfully! Click Search to fetch.");
+                }
+              }}
+              onError={(error) => console.log(error?.message)}
+              components={{
+                audio: false,
+                finder: true
+              }}
+            />
+          </div>
+        </div>
+      )}
 
       {cargo && (
         <div className="space-y-6">
@@ -253,6 +299,7 @@ export default function ScanCargo() {
                           className="w-full border border-gray-200 rounded-lg py-2.5 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
                         >
                           <option value="">Select status...</option>
+                          <option value={cargo.status}>-- Keep Current ({cargo.statusLabel}) --</option>
                           <option value="DISPATCHED">Dispatched (Loaded on Train)</option>
                           <option value="IN_TRANSIT">In Transit (Passing Through)</option>
                           <option value="IN_TRANSIT_HUB_SORTING">Unloaded for Transfer / Hub Sorting</option>
@@ -286,6 +333,38 @@ export default function ScanCargo() {
                         </div>
                       )}
                     </div>
+                    
+                    <div className="grid grid-cols-2 gap-4 mt-2 p-3 bg-gray-50 rounded-lg border border-gray-100">
+                      <div className="col-span-2">
+                        <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Change Details (Optional)</p>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Update Train Type</label>
+                        <select 
+                          value={updateTrainType}
+                          onChange={e => setUpdateTrainType(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">(No Change)</option>
+                          <option value="EXPRESS">Express / Intercity</option>
+                          <option value="NORMAL">Normal Train</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-700 mb-1">Re-assign Train</label>
+                        <select 
+                          value={updateTrainId}
+                          onChange={e => setUpdateTrainId(e.target.value)}
+                          className="w-full border border-gray-200 rounded-lg py-2 px-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                        >
+                          <option value="">(No Change)</option>
+                          {trains.map(t => (
+                            <option key={t.id} value={t.id}>{t.trainNo} - {t.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-1">Note (Optional)</label>
                       <input 
@@ -298,11 +377,11 @@ export default function ScanCargo() {
                     <div className="flex justify-end pt-2">
                       <button 
                         type="submit"
-                        disabled={updating || !newStatus || (newStatus === 'DISPATCHED' ? !selectedTrain : !location)}
+                        disabled={updating || !newStatus}
                         className="bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white font-medium px-6 py-2.5 rounded-lg transition-colors flex items-center gap-2"
                       >
                         {updating && <Loader2 className="animate-spin" size={16} />}
-                        Update Status
+                        Update Status & Details
                       </button>
                     </div>
                   </form>

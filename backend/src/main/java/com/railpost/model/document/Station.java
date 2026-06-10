@@ -26,6 +26,9 @@ public class Station {
     private String province;
     private String address;
     private String phone;
+    
+    private String line;
+    private Double distanceToFort;
 
     @Builder.Default
     private StationStatus status = StationStatus.ACTIVE;

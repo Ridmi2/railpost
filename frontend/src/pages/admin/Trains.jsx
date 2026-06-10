@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../../api/endpoints/adminApi';
 import { Search, Plus, X, Train, Clock, Calendar, MapPin, RefreshCw } from 'lucide-react';
 import toast from 'react-hot-toast';
+import { railwayLines } from '../../data/railwayLines';
 
 const DAYS_OF_WEEK = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
 
@@ -12,16 +13,18 @@ export default function AdminTrains() {
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [showModal, setShowModal] = useState(false);
+  const [step, setStep] = useState(1);
 
   // Form State
   const [formData, setFormData] = useState({
-    trainNo: '',
     name: '',
+    line: '',
+    trainType: 'NORMAL',
     sourceStationId: '',
     destinationStationId: '',
-    departureTime: '',
-    arrivalTime: '',
-    runsOn: []
+    trips: [{ tripName: 'Trip 1', departureTime: '', arrivalTime: '', direction: 'OUTBOUND', stationTimes: {} }],
+    runsOn: [],
+    stopStations: []
   });
   const [submitting, setSubmitting] = useState(false);
 
@@ -59,7 +62,78 @@ export default function AdminTrains() {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    if (name === 'line') {
+      setFormData(prev => ({ 
+        ...prev, 
+        [name]: value,
+        sourceStationId: '',
+        destinationStationId: '',
+        stopStations: []
+      }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+
+  const handleTripChange = (index, field, value) => {
+    setFormData(prev => {
+      const newTrips = [...prev.trips];
+      newTrips[index] = { ...newTrips[index], [field]: value };
+      return { ...prev, trips: newTrips };
+    });
+  };
+
+  const handleAddTrip = () => {
+    setFormData(prev => {
+      const currentCount = prev.trips.length;
+      // Default to alternating direction
+      const lastDirection = prev.trips[currentCount - 1]?.direction || 'OUTBOUND';
+      const nextDirection = lastDirection === 'OUTBOUND' ? 'RETURN' : 'OUTBOUND';
+      
+      return {
+        ...prev,
+        trips: [
+          ...prev.trips,
+          { 
+            tripName: `Trip ${currentCount + 1}`, 
+            departureTime: '', 
+            arrivalTime: '', 
+            direction: nextDirection,
+            stationTimes: {}
+          }
+        ]
+      };
+    });
+  };
+
+  const handleStationTimeChange = (tripIndex, stationId, time) => {
+    setFormData(prev => {
+      const newTrips = [...prev.trips];
+      const trip = { ...newTrips[tripIndex] };
+      trip.stationTimes = { ...(trip.stationTimes || {}), [stationId]: time };
+      newTrips[tripIndex] = trip;
+      return { ...prev, trips: newTrips };
+    });
+  };
+
+  const handleRemoveTrip = (index) => {
+    setFormData(prev => {
+      const newTrips = prev.trips.filter((_, i) => i !== index);
+      // Renumber trips
+      const renumberedTrips = newTrips.map((t, i) => ({ ...t, tripName: `Trip ${i + 1}` }));
+      return { ...prev, trips: renumberedTrips };
+    });
+  };
+
+  const handleStopStationToggle = (stationId) => {
+    setFormData(prev => {
+      const current = prev.stopStations || [];
+      if (current.includes(stationId)) {
+        return { ...prev, stopStations: current.filter(id => id !== stationId) };
+      } else {
+        return { ...prev, stopStations: [...current, stationId] };
+      }
+    });
   };
 
   const handleDayToggle = (day) => {
@@ -87,30 +161,45 @@ export default function AdminTrains() {
     e.preventDefault();
 
     // Validations
-    if (!formData.trainNo.trim()) return toast.error('Train number is required');
     if (!formData.name.trim()) return toast.error('Train name is required');
+    if (!formData.line) return toast.error('Line is required');
     if (!formData.sourceStationId) return toast.error('Source station is required');
     if (!formData.destinationStationId) return toast.error('Destination station is required');
     if (formData.sourceStationId === formData.destinationStationId) {
       return toast.error('Source and Destination stations cannot be the same');
     }
-    if (!formData.departureTime) return toast.error('Departure time is required');
-    if (!formData.arrivalTime) return toast.error('Arrival time is required');
+    
+    // Validate trips
+    if (formData.trips.length === 0) return toast.error('At least one trip is required');
+    for (let i = 0; i < formData.trips.length; i++) {
+      const t = formData.trips[i];
+      if (!t.departureTime || !t.arrivalTime) {
+        return toast.error(`Departure and Arrival times are required for ${t.tripName}`);
+      }
+    }
+
     if (formData.runsOn.length === 0) return toast.error('Please select at least one operating day');
+
+    if (step === 1 && formData.stopStations.length > 0) {
+      setStep(2);
+      return;
+    }
 
     setSubmitting(true);
     try {
       const res = await adminApi.createTrain(formData);
       toast.success(res.data.message || 'Train registered successfully');
       setShowModal(false);
+      setStep(1);
       setFormData({
-        trainNo: '',
         name: '',
+        line: '',
+        trainType: 'NORMAL',
         sourceStationId: '',
         destinationStationId: '',
-        departureTime: '',
-        arrivalTime: '',
-        runsOn: []
+        trips: [{ tripName: 'Trip 1', departureTime: '', arrivalTime: '', direction: 'OUTBOUND', stationTimes: {} }],
+        runsOn: [],
+        stopStations: []
       });
       fetchData();
     } catch (err) {
@@ -122,15 +211,19 @@ export default function AdminTrains() {
 
   const filteredTrains = trains.filter(train => {
     const matchesSearch =
-      train.trainNo.toLowerCase().includes(search.toLowerCase()) ||
-      train.name.toLowerCase().includes(search.toLowerCase()) ||
-      train.sourceStationName.toLowerCase().includes(search.toLowerCase()) ||
-      train.destinationStationName.toLowerCase().includes(search.toLowerCase());
+      (train.trainNo && train.trainNo.toLowerCase().includes(search.toLowerCase())) ||
+      (train.name && train.name.toLowerCase().includes(search.toLowerCase())) ||
+      (train.sourceStationName && train.sourceStationName.toLowerCase().includes(search.toLowerCase())) ||
+      (train.destinationStationName && train.destinationStationName.toLowerCase().includes(search.toLowerCase()));
 
     const matchesFilter = statusFilter === 'ALL' || train.status === statusFilter;
 
     return matchesSearch && matchesFilter;
   });
+
+  const filteredStations = formData.line 
+    ? stations.filter(s => s.line === formData.line)
+    : [];
 
   return (
     <div className="space-y-6">
@@ -209,10 +302,16 @@ export default function AdminTrains() {
                 {/* Title & Badge */}
                 <div className="flex items-start justify-between">
                   <div>
-                    <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
-                      #{train.trainNo}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">
+                        #{train.trainNo}
+                      </span>
+                      <span className="text-xs font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded uppercase">
+                        {train.trainType === 'EXPRESS' ? 'Express/Mail' : 'Normal'}
+                      </span>
+                    </div>
                     <h3 className="font-bold text-gray-900 mt-1.5 text-base">{train.name}</h3>
+                    {train.line && <p className="text-xs text-gray-500">{train.line}</p>}
                   </div>
                   <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold ${
                     train.status === 'ACTIVE'
@@ -242,20 +341,53 @@ export default function AdminTrains() {
                   </div>
                 </div>
 
-                {/* Timing info */}
-                <div className="mt-4 grid grid-cols-2 gap-4 bg-gray-50/75 p-3 rounded-lg border border-gray-100">
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                    <Clock size={14} className="text-blue-500" />
-                    <div>
-                      <span className="text-gray-400">Departs: </span>
-                      <span className="font-bold text-gray-700">{train.departureTime}</span>
+                {/* Timing info - Grouped by Direction */}
+                <div className="mt-4 grid grid-cols-2 gap-x-4 gap-y-4 bg-gray-50/75 p-3 rounded-lg border border-gray-100">
+                  {/* Outbound Column */}
+                  <div>
+                    <div className="pb-1 border-b border-gray-200 mb-2">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide truncate" title={`${train.sourceStationName} ➔ ${train.destinationStationName}`}>
+                        {train.sourceStationName} ➔ {train.destinationStationName}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {train.trips?.filter(t => t.direction === 'OUTBOUND').length > 0 ? (
+                        train.trips.filter(t => t.direction === 'OUTBOUND').map((trip, idx) => (
+                          <div key={idx} className="bg-white p-1.5 rounded border border-gray-100 shadow-sm flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-gray-400 w-10">{trip.tripName}</span>
+                            <div className="flex flex-col text-right">
+                              <span className="text-xs font-bold text-blue-600">{trip.departureTime}</span>
+                              <span className="text-xs font-bold text-blue-800">{trip.arrivalTime}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">No outbound trips</p>
+                      )}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 text-xs text-gray-600">
-                    <Clock size={14} className="text-blue-500" />
-                    <div>
-                      <span className="text-gray-400">Arrives: </span>
-                      <span className="font-bold text-gray-700">{train.arrivalTime}</span>
+
+                  {/* Return Column */}
+                  <div>
+                    <div className="pb-1 border-b border-gray-200 mb-2">
+                      <p className="text-[10px] font-bold text-gray-500 uppercase tracking-wide truncate" title={`${train.destinationStationName} ➔ ${train.sourceStationName}`}>
+                        {train.destinationStationName} ➔ {train.sourceStationName}
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      {train.trips?.filter(t => t.direction === 'RETURN').length > 0 ? (
+                        train.trips.filter(t => t.direction === 'RETURN').map((trip, idx) => (
+                          <div key={idx} className="bg-white p-1.5 rounded border border-gray-100 shadow-sm flex items-center justify-between">
+                            <span className="text-[10px] font-bold text-gray-400 w-10">{trip.tripName}</span>
+                            <div className="flex flex-col text-right">
+                              <span className="text-xs font-bold text-orange-600">{trip.departureTime}</span>
+                              <span className="text-xs font-bold text-orange-800">{trip.arrivalTime}</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="text-xs text-gray-400 italic">No return trips</p>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -307,14 +439,15 @@ export default function AdminTrains() {
       {/* Add Train Modal */}
       {showModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-gray-100 overflow-hidden transform transition-all">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-gray-100 overflow-hidden transform transition-all max-h-[90vh] flex flex-col">
             {/* Modal Header */}
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 shrink-0">
               <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
                 <Train className="text-blue-600" size={20} />
                 Register Cargo Train & Schedule
               </h2>
               <button
+                type="button"
                 onClick={() => setShowModal(false)}
                 className="text-gray-400 hover:text-gray-600 p-1 hover:bg-gray-50 rounded-lg transition-all"
               >
@@ -323,23 +456,46 @@ export default function AdminTrains() {
             </div>
 
             {/* Modal Form */}
-            <form onSubmit={handleSubmit} className="p-6 space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
+              {step === 1 ? (
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                    Train Number *
+                    Line *
                   </label>
-                  <input
-                    type="text"
-                    name="trainNo"
+                  <select
+                    name="line"
                     required
-                    placeholder="e.g. 1005"
-                    value={formData.trainNo}
+                    value={formData.line}
                     onChange={handleInputChange}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all font-mono"
-                  />
+                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                  >
+                    <option value="">Select Line</option>
+                    {Object.keys(railwayLines).map(l => (
+                      <option key={l} value={l}>{l}</option>
+                    ))}
+                  </select>
                 </div>
                 <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
+                    Train Type *
+                  </label>
+                  <select
+                    name="trainType"
+                    required
+                    value={formData.trainType}
+                    onChange={handleInputChange}
+                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
+                  >
+                    <option value="NORMAL">Normal Train</option>
+                    <option value="EXPRESS">Express / Intercity / Mail</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
                     Train Name *
                   </label>
@@ -368,7 +524,7 @@ export default function AdminTrains() {
                     className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
                   >
                     <option value="">Select Origin Station</option>
-                    {stations.map(s => (
+                    {filteredStations.map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
                     ))}
                   </select>
@@ -385,41 +541,112 @@ export default function AdminTrains() {
                     className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all cursor-pointer"
                   >
                     <option value="">Select Destination Station</option>
-                    {stations.map(s => (
+                    {filteredStations.map(s => (
                       <option key={s.id} value={s.id}>{s.name} ({s.code})</option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                    Departure Time *
+              {/* Dynamic Trips Section */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                <div className="flex items-center justify-between">
+                  <label className="block text-xs font-bold text-gray-700 uppercase tracking-wide">
+                    Train Trips / Schedule
                   </label>
-                  <input
-                    type="time"
-                    name="departureTime"
-                    required
-                    value={formData.departureTime}
-                    onChange={handleInputChange}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  />
+                  <button
+                    type="button"
+                    onClick={handleAddTrip}
+                    className="text-xs flex items-center gap-1 bg-white border border-gray-200 hover:bg-gray-100 text-blue-600 px-2 py-1 rounded shadow-sm font-semibold transition-all"
+                  >
+                    <Plus size={14} /> Add Trip
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1">
-                    Arrival Time *
-                  </label>
-                  <input
-                    type="time"
-                    name="arrivalTime"
-                    required
-                    value={formData.arrivalTime}
-                    onChange={handleInputChange}
-                    className="w-full px-3.5 py-2 border border-gray-200 rounded-lg text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition-all"
-                  />
+
+                <div className="space-y-3">
+                  {formData.trips.map((trip, idx) => (
+                    <div key={idx} className="bg-white p-3 rounded-lg border border-gray-200 relative shadow-sm">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-0.5 rounded">
+                          {trip.tripName}
+                        </span>
+                        {formData.trips.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTrip(idx)}
+                            className="text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-all"
+                            title="Remove Trip"
+                          >
+                            <X size={14} />
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-[1.2fr_1fr_1fr] gap-3">
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Direction</label>
+                          <select
+                            value={trip.direction}
+                            onChange={(e) => handleTripChange(idx, 'direction', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          >
+                            <option value="OUTBOUND">Outbound ➔</option>
+                            <option value="RETURN">Return ➔</option>
+                          </select>
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Departure *</label>
+                          <input
+                            type="time"
+                            required
+                            value={trip.departureTime}
+                            onChange={(e) => handleTripChange(idx, 'departureTime', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Arrival *</label>
+                          <input
+                            type="time"
+                            required
+                            value={trip.arrivalTime}
+                            onChange={(e) => handleTripChange(idx, 'arrivalTime', e.target.value)}
+                            className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
+
+              {formData.line && (
+                <div>
+                  <label className="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">
+                    Stop Stations (Optional)
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2 max-h-48 overflow-y-auto p-2 border border-gray-200 rounded-lg bg-gray-50">
+                    {filteredStations.map(s => {
+                      const isSelected = formData.stopStations.includes(s.id);
+                      return (
+                        <button
+                          type="button"
+                          key={s.id}
+                          onClick={() => handleStopStationToggle(s.id)}
+                          className={`px-2 py-1.5 rounded text-xs text-left border transition-all truncate ${
+                            isSelected
+                              ? 'bg-blue-100 text-blue-700 border-blue-300 font-bold'
+                              : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-100'
+                          }`}
+                          title={s.name}
+                        >
+                          {s.name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
 
               <div>
                 <div className="flex justify-between items-center mb-1.5">
@@ -454,12 +681,52 @@ export default function AdminTrains() {
                   })}
                 </div>
               </div>
+              </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="bg-blue-50 text-blue-800 p-3 rounded-lg text-sm border border-blue-100">
+                    <p className="font-bold mb-1">Set Stop Station Arrival Times</p>
+                    <p className="text-xs">For each trip, set the arrival time for the intermediate stop stations you selected.</p>
+                  </div>
+                  {formData.trips.map((trip, idx) => (
+                    <div key={idx} className="bg-gray-50 p-4 rounded-xl border border-gray-200">
+                      <h4 className="font-bold text-sm text-blue-700 mb-3">{trip.tripName} ({trip.direction === 'OUTBOUND' ? 'Outbound ➔' : 'Return ➔'})</h4>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {formData.stopStations.map(stationId => {
+                          const station = stations.find(s => s.id === stationId);
+                          return (
+                            <div key={stationId}>
+                              <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1 truncate" title={station?.name}>{station?.name}</label>
+                              <input
+                                type="time"
+                                required
+                                value={trip.stationTimes?.[stationId] || ''}
+                                onChange={(e) => handleStationTimeChange(idx, stationId, e.target.value)}
+                                className="w-full px-2 py-1.5 border border-gray-200 rounded text-xs text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="flex items-center justify-end gap-3 mt-6 pt-4 border-t border-gray-100">
+                {step === 2 && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer mr-auto"
+                  >
+                    Back
+                  </button>
+                )}
                 <button
                   type="button"
-                  onClick={() => setShowModal(false)}
+                  onClick={() => { setShowModal(false); setStep(1); }}
                   className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-medium text-gray-700 hover:bg-gray-50 transition-all cursor-pointer"
                 >
                   Cancel
@@ -470,7 +737,7 @@ export default function AdminTrains() {
                   className="bg-blue-600 hover:bg-blue-700 text-white font-medium text-sm px-5 py-2 rounded-lg shadow-sm transition-all cursor-pointer flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {submitting && <RefreshCw size={14} className="animate-spin" />}
-                  Register Train
+                  {step === 1 && formData.stopStations.length > 0 ? 'Next Step ➔' : 'Register Train'}
                 </button>
               </div>
             </form>

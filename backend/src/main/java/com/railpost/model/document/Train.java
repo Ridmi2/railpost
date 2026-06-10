@@ -12,6 +12,8 @@ import org.springframework.data.mongodb.core.mapping.Field;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import com.railpost.model.enums.TrainType;
+
 @Document(collection = "trains")
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Train {
@@ -31,11 +33,26 @@ public class Train {
     @Field("destination_station_id")
     private String destinationStationId;
 
-    @Field("departure_time")
-    private String departureTime;
+    @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+    public static class Trip {
+        private String tripName;
+        private String departureTime;
+        private String arrivalTime;
+        private String direction; // "OUTBOUND" or "RETURN"
+        @Builder.Default
+        private java.util.Map<String, String> stationTimes = new java.util.HashMap<>();
+    }
 
-    @Field("arrival_time")
-    private String arrivalTime;
+    @Field("trips")
+    private List<Trip> trips;
+
+    private String line;
+
+    @Field("train_type")
+    private TrainType trainType;
+
+    @Field("stop_stations")
+    private List<String> stopStations;
 
     @Field("runs_on")
     private List<String> runsOn; // e.g. ["Monday", "Tuesday"] or ["Daily"]

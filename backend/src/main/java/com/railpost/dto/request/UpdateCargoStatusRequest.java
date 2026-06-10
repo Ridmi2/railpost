@@ -17,4 +17,8 @@ public class UpdateCargoStatusRequest {
     private String location;
 
     private String note;
+
+    private String trainId;
+    
+    private com.railpost.model.enums.TrainType trainType;
 }

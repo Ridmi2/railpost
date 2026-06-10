@@ -60,6 +60,17 @@ public class StationOfficerServiceImpl implements StationOfficerService {
         cargo.setStatus(request.getStatus());
         String location = request.getLocation();
 
+        if (request.getTrainType() != null) {
+            cargo.setTrainType(request.getTrainType());
+        }
+
+        if (request.getTrainId() != null && !request.getTrainId().isEmpty()) {
+            com.railpost.model.document.Train train = trainRepository.findById(request.getTrainId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Train not found"));
+            cargo.setCurrentTrainId(train.getId());
+            cargo.setTrainNumber(train.getTrainNo() + " - " + train.getName());
+        }
+
         if (request.getStatus() == CargoStatus.ARRIVED) {
             emailService.sendArrivalEmail(cargo.getReceiverEmail(), cargo.getTrackingNumber(), cargo.getDestinationStationName());
             smsService.sendArrivalSms(cargo.getReceiverPhone(), cargo.getTrackingNumber(), cargo.getDestinationStationName());

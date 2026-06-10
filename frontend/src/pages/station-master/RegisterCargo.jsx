@@ -4,7 +4,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2, User, Phone, Mail, CreditCard,
-         Package, MapPin, DollarSign, FileText, Weight } from 'lucide-react';
+         Package, MapPin, DollarSign, FileText, Weight, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { stationMasterApi } from '../../api/endpoints/stationMasterApi';
 import { publicApi } from '../../api/endpoints/publicApi';
@@ -31,6 +31,7 @@ const schema = z.object({
   declaredValue:        z.string().min(1, 'Declared value is required')
                           .refine(v => !isNaN(v) && Number(v) >= 0, 'Must be positive'),
   trainType:            z.string().min(1, 'Select train type'),
+  trainId:              z.string().optional(),
   description:          z.string().max(500).optional(),
 });
 
@@ -70,6 +71,7 @@ export default function RegisterCargo() {
   const [loading,  setLoading]  = useState(false);
   const [estimatedCost, setEstimatedCost] = useState(null);
   const [receiptTracking, setReceiptTracking] = useState(null);
+  const [trains, setTrains] = useState([]);
 
   const { register, handleSubmit, watch, formState: { errors } } = useForm({
     resolver: zodResolver(schema),
@@ -79,6 +81,10 @@ export default function RegisterCargo() {
     stationMasterApi.getStations()
       .then(r => setStations(r.data.data?.filter(s => s.status === 'ACTIVE') || []))
       .catch(() => toast.error('Failed to load stations'));
+      
+    stationMasterApi.getTrains()
+      .then(r => setTrains(r.data.data || []))
+      .catch(() => toast.error('Failed to load trains'));
   }, []);
 
   const weightVal = watch('weight');
@@ -120,6 +126,7 @@ export default function RegisterCargo() {
         declaredValue: Number(data.declaredValue),
         senderEmail: data.senderEmail || undefined,
         receiverEmail: data.receiverEmail || undefined,
+        trainId: data.trainId || undefined,
       });
       const tn = res.data.data.trackingNumber;
       setReceiptTracking(tn);
@@ -216,6 +223,16 @@ export default function RegisterCargo() {
                 <option value="">Select train type...</option>
                 <option value="EXPRESS">Mail, Intercity & Express Trains</option>
                 <option value="NORMAL">Normal Trains</option>
+              </select>
+            </Field>
+            <Field label="Assign Train (Optional)" error={errors.trainId?.message} icon={Truck}
+                   hint="Select a specific train run">
+              <select {...register('trainId')}
+                      className={`${iCls()} bg-white`}>
+                <option value="">Do not assign yet...</option>
+                {trains.map(t => (
+                  <option key={t.id} value={t.id}>{t.trainNo} - {t.name}</option>
+                ))}
               </select>
             </Field>
             <Field label="Distance (Km)" error={errors.distance?.message} icon={MapPin}

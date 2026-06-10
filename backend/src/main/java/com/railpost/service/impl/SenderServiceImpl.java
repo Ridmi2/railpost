@@ -20,7 +20,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
-import java.util.Random;
+import java.security.SecureRandom;
 
 @Service
 @RequiredArgsConstructor
@@ -31,7 +31,7 @@ public class SenderServiceImpl implements SenderService {
     private final UserRepository   userRepository;
     private final StationRepository stationRepository;
     private final com.railpost.service.EmailService emailService;
-    private final Random random = new Random();
+    private final SecureRandom random = new SecureRandom();
 
     @Override
     public CargoResponse bookCargo(String senderEmail, BookCargoRequest req) {

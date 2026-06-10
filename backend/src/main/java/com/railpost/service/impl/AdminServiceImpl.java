@@ -65,11 +65,29 @@ public class AdminServiceImpl implements AdminService {
     // ── Stations ─────────────────────────────────────────────────────────────
     @Override
     public StationResponse createStation(CreateStationRequest request) {
-        if (stationRepository.existsByCode(request.getCode()))
-            throw new ConflictException("Station code '" + request.getCode() + "' already exists");
+        String code = request.getCode();
+        
+        // Auto-generate code if not provided
+        if (code == null || code.trim().isEmpty()) {
+            String linePrefix = getLinePrefix(request.getLine());
+            long count = stationRepository.countByLine(request.getLine());
+            code = String.format("%s%04d", linePrefix, count + 1);
+            
+            // Just in case, ensure it's unique
+            while (stationRepository.existsByCode(code)) {
+                count++;
+                code = String.format("%s%04d", linePrefix, count + 1);
+            }
+        } else {
+            code = code.toUpperCase();
+            if (stationRepository.existsByCode(code))
+                throw new ConflictException("Station code '" + code + "' already exists");
+        }
 
         Station station = Station.builder()
-                .code(request.getCode().toUpperCase())
+                .code(code)
+                .line(request.getLine())
+                .distanceToFort(request.getDistanceToFort())
                 .name(request.getName())
                 .city(request.getCity())
                 .province(request.getProvince())
@@ -162,6 +180,7 @@ public class AdminServiceImpl implements AdminService {
     private StationResponse toStationResponse(Station s) {
         return StationResponse.builder()
                 .id(s.getId()).code(s.getCode()).name(s.getName())
+                .line(s.getLine()).distanceToFort(s.getDistanceToFort())
                 .city(s.getCity()).province(s.getProvince())
                 .address(s.getAddress()).phone(s.getPhone())
                 .status(s.getStatus()).createdAt(s.getCreatedAt())
@@ -184,17 +203,25 @@ public class AdminServiceImpl implements AdminService {
     // ── Trains ────────────────────────────────────────────────────────────────
     @Override
     public com.railpost.dto.response.TrainResponse createTrain(com.railpost.dto.request.CreateTrainRequest request) {
-        if (trainRepository.existsByTrainNo(request.getTrainNo())) {
-            throw new ConflictException("Train number '" + request.getTrainNo() + "' already exists");
-        }
+        String trainNo = generateTrainNumber();
         
         com.railpost.model.document.Train train = com.railpost.model.document.Train.builder()
-                .trainNo(request.getTrainNo())
+                .trainNo(trainNo)
                 .name(request.getName())
                 .sourceStationId(request.getSourceStationId())
                 .destinationStationId(request.getDestinationStationId())
-                .departureTime(request.getDepartureTime())
-                .arrivalTime(request.getArrivalTime())
+                .trips(request.getTrips() != null ? request.getTrips().stream()
+                        .map(dto -> com.railpost.model.document.Train.Trip.builder()
+                                .tripName(dto.getTripName())
+                                .departureTime(dto.getDepartureTime())
+                                .arrivalTime(dto.getArrivalTime())
+                                .direction(dto.getDirection())
+                                .stationTimes(dto.getStationTimes())
+                                .build())
+                        .collect(java.util.stream.Collectors.toList()) : new java.util.ArrayList<>())
+                .line(request.getLine())
+                .trainType(request.getTrainType())
+                .stopStations(request.getStopStations())
                 .runsOn(request.getRunsOn())
                 .status(com.railpost.model.enums.TrainStatus.ACTIVE)
                 .build();
@@ -302,8 +329,18 @@ public class AdminServiceImpl implements AdminService {
                 .sourceStationName(source != null ? source.getName() : "Unknown")
                 .destinationStationId(t.getDestinationStationId())
                 .destinationStationName(dest != null ? dest.getName() : "Unknown")
-                .departureTime(t.getDepartureTime())
-                .arrivalTime(t.getArrivalTime())
+                .trips(t.getTrips() != null ? t.getTrips().stream()
+                        .map(trip -> com.railpost.dto.response.TrainResponse.TripDto.builder()
+                                .tripName(trip.getTripName())
+                                .departureTime(trip.getDepartureTime())
+                                .arrivalTime(trip.getArrivalTime())
+                                .direction(trip.getDirection())
+                                .stationTimes(trip.getStationTimes())
+                                .build())
+                        .collect(java.util.stream.Collectors.toList()) : new java.util.ArrayList<>())
+                .line(t.getLine())
+                .trainType(t.getTrainType())
+                .stopStations(t.getStopStations())
                 .runsOn(t.getRunsOn())
                 .status(t.getStatus())
                 .createdAt(t.getCreatedAt())
@@ -319,5 +356,30 @@ public class AdminServiceImpl implements AdminService {
                 .perishableMultiplier(c.getPerishableMultiplier())
                 .updatedAt(c.getUpdatedAt())
                 .build();
+    }
+
+    private String getLinePrefix(String line) {
+        if (line == null) return "ST";
+        return switch (line.toUpperCase()) {
+            case "MAIN LINE" -> "ML";
+            case "MATALE LINE" -> "MTL";
+            case "PUTTALAM LINE" -> "PL";
+            case "NORTHERN LINE" -> "NL";
+            case "BATTICALOA LINE" -> "BL";
+            case "COAST LINE", "COASTAL LINE" -> "CL";
+            case "KV LINE", "KELANI VALLEY LINE" -> "KVL";
+            case "TRINCOMALEE LINE" -> "TL";
+            case "TALAIMANNAR LINE" -> "TML";
+            default -> "ST";
+        };
+    }
+
+    private String generateTrainNumber() {
+        String prefix = "TRN-";
+        String number = String.format("%04d", new java.util.Random().nextInt(10000));
+        if (trainRepository.existsByTrainNo(prefix + number)) {
+            return generateTrainNumber();
+        }
+        return prefix + number;
     }
 }

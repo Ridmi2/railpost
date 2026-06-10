@@ -66,4 +66,6 @@ public class WalkInCargoRequest {
 
     @Size(max = 500)
     private String description;
+
+    private String trainId; // optional
 }
